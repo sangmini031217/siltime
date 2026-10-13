@@ -1,0 +1,401 @@
+/* ==========================================================================
+   report.css — 학습 리포트 시트 (PDF / 이미지 내보내기 전용)
+   화면 테마(밤/낮)와 상관없이 같은 모양이 나오도록, 이 파일은 CSS 변수를 쓰지 않고
+   라이트 고정 색만 씁니다. 폭은 A4(210mm == 794px @96dpi) 기준입니다.
+   ========================================================================== */
+
+/* 화면에서는 보이지 않습니다. PDF 는 인쇄할 때만, 이미지는 .rs-stage 안에서만 보입니다. */
+.rs-print {
+  display: none;
+}
+
+/* 이미지 저장용 무대: 사용자 눈에는 안 보이지만 레이아웃은 계산되는 곳.
+   화면 밖(left:-10000px)에 두면 일부 브라우저에서 잘려 그려지므로,
+   페이지 뒤(z-index:-1)에 겹쳐 둡니다. */
+.rs-stage {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  width: 794px;
+  pointer-events: none;
+}
+.rs-stage .report-sheet {
+  display: flex;
+}
+
+.report-sheet {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: 794px;
+  padding: 44px 48px 36px;
+  background: #ffffff;
+  color: #1b1b1b;
+  font-family: "Inter", "Inter var", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica,
+    Arial, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  text-align: left;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.report-sheet *,
+.report-sheet *::before,
+.report-sheet *::after {
+  box-sizing: border-box;
+}
+.report-sheet h1,
+.report-sheet h2,
+.report-sheet p,
+.report-sheet ul,
+.report-sheet ol,
+.report-sheet dl,
+.report-sheet dd,
+.report-sheet figure {
+  margin: 0;
+  padding: 0;
+}
+.report-sheet ul,
+.report-sheet ol {
+  list-style: none;
+}
+
+/* ── 머리글 ── */
+.rs-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 2px solid #1e3932;
+}
+.rs-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rs-mark {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #d4e9e2;
+}
+.rs-mark::after {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border-radius: 5px;
+  background: #1e3932;
+}
+.rs-brand__text {
+  font-size: 17px;
+  font-weight: 700;
+  color: #1e3932;
+}
+.rs-head__date {
+  font-size: 12px;
+  color: #6b6b6b;
+}
+
+/* ── 프로필 ── */
+.rs-profile {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+.rs-name {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #1e3932;
+  overflow-wrap: anywhere;
+}
+.rs-seed {
+  margin-top: 4px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  color: #6b6b6b;
+}
+.rs-stage-pill {
+  flex: none;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #1e3932;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ── 핵심 수치 ── */
+.rs-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  border: 1px solid #d9d5d0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.rs-kpi {
+  /* 아래를 조금 더 비웁니다. 이미지 저장 때 글자가 약간 아래로 그려져 선에 붙어 보입니다. */
+  padding: 12px 16px 16px;
+  border-right: 1px solid #d9d5d0;
+  border-bottom: 1px solid #d9d5d0;
+  background: #fbfaf8;
+}
+.rs-kpi:nth-child(3n) {
+  border-right: 0;
+}
+.rs-kpi:nth-last-child(-n + 3) {
+  border-bottom: 0;
+}
+.rs-kpi__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b6b6b;
+}
+.rs-kpi__value {
+  margin-top: 2px;
+  font-size: 19px;
+  font-weight: 700;
+  color: #1b1b1b;
+}
+
+/* ── 나무 + 전체 진행도 ── */
+.rs-main {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+.rs-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rs-tree__canvas {
+  display: block;
+  border: 1px solid #d9d5d0;
+  border-radius: 6px;
+  background: #f2f0eb;
+}
+.rs-tree__caption {
+  font-size: 11px;
+  color: #6b6b6b;
+}
+.rs-overall {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.rs-section__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e3932;
+}
+.rs-overall__value {
+  font-size: 34px;
+  font-weight: 700;
+  /* 이미지 저장(html2canvas)은 큰 글자를 조금 아래로 그려서, 여유가 없으면 아래 막대와 겹칩니다. */
+  line-height: 1.25;
+  padding-bottom: 18px;
+  color: #1b1b1b;
+}
+.rs-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: #e8e6e3;
+  overflow: hidden;
+}
+.rs-bar--lg {
+  height: 10px;
+}
+.rs-bar__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #006241;
+}
+.rs-overall__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: #6b6b6b;
+}
+.rs-track {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px 6px;
+  margin-top: 8px;
+}
+.rs-track__step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #9a9a9a;
+}
+.rs-track__dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  border: 1px solid #c9c5bf;
+  background: #ffffff;
+}
+.rs-track__step.is-reached {
+  color: #1b1b1b;
+}
+.rs-track__step.is-reached .rs-track__dot {
+  border-color: #006241;
+  background: #006241;
+}
+.rs-track__step.is-current {
+  font-weight: 700;
+  color: #006241;
+}
+
+/* ── 섹션 공통 ── */
+.rs-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.rs-note {
+  font-size: 12px;
+  color: #6b6b6b;
+}
+.rs-empty,
+.rs-more {
+  font-size: 12px;
+  color: #6b6b6b;
+}
+
+/* ── 분야별 10,000시간 ── */
+.rs-fieldlist {
+  display: flex;
+  flex-direction: column;
+}
+.rs-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 9px;
+  padding-bottom: 9px;
+  border-top: 1px solid #e8e6e3;
+}
+.rs-field:first-child {
+  border-top: 0;
+}
+.rs-field__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rs-field__swatch {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: #8d8880;
+}
+.rs-field__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.rs-field__hours {
+  flex: none;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: #6b6b6b;
+}
+.rs-field__meta {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: #6b6b6b;
+}
+.rs-field__stage {
+  font-weight: 700;
+  color: #1b1b1b;
+}
+.rs-field__percent {
+  margin-left: auto;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color: #1b1b1b;
+}
+
+/* ── 표 ── */
+.rs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.rs-table th,
+.rs-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid #e8e6e3;
+  text-align: left;
+  vertical-align: middle;
+}
+.rs-table th {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b6b6b;
+  background: #fbfaf8;
+  border-bottom: 1px solid #d9d5d0;
+}
+.rs-table .is-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.rs-table__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── 바닥글 ── */
+.rs-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid #d9d5d0;
+  font-size: 11px;
+  color: #6b6b6b;
+}
+
+/* ==========================================================================
+   인쇄 (PDF 로 저장)
+   ========================================================================== */
+@page {
+  size: A4;
+  margin: 0;
+}
+@media print {
+  body.is-printing-report {
+    background: #ffffff !important;
+  }
+  /* 리포트 시트만 남기고 화면의 나머지는 모두 숨깁니다. */
+  body.is-printing-report > *:not(.rs-print) {
+    display: none !important;
+  }
+  body.is-printing-report > .rs-print {
+    display: flex !important;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0;
+    padding: 12mm 14mm;
+  }
+}

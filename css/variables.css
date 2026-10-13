@@ -1,0 +1,322 @@
+/* ==========================================================================
+   variables.css — SilTime design tokens
+   Starbucks 디자인 시스템 계열.
+   · 4단 그린 래더: Starbucks Green / Green Accent / House Green / Green Uplift
+   · 웜 크림 캔버스(Neutral Warm · Ceramic)
+   · 50px 풀필 버튼 + 12px 카드 + 계층형 whisper 섀도우
+   · rem 앵커: html { font-size: 62.5% } → 1rem = 10px (reset.css)
+   테마는 html[data-theme="light"|"dark"] 로 적용됩니다.
+   라이트 = 크림 캔버스(원본 시스템), 다크 = House Green 캔버스(재해석).
+   ========================================================================== */
+
+:root {
+  /* ── 테마 공통 ──────────────────────────────────────────────────────── */
+
+  /* Brand — 4단 그린 래더 (원색은 두 테마에서 동일하게 유지) */
+  --starbucks-green: #006241; /* 1단 · 1차 브랜드 그린 */
+  --green-accent: #00754a; /* 2단 · 인터랙션/액센트 */
+  --house-green: #1e3932; /* 3단 · 깊은 면/푸터/피처 밴드 */
+  --green-uplift: #2b5148; /* 4단 · House Green 위의 상승면 */
+  --green-light: #d4e9e2; /* 연한 민트 그린 (배지/트랙) */
+  --green-wash: #eef7f3; /* 가장 연한 그린 틴트 */
+
+  /* 하위 호환 별칭 — 기존 컴포넌트가 --green 계열을 참조합니다 */
+  --green: var(--starbucks-green); /* 면(배경)용 액센트 */
+  --green-hover: #00543a; /* 호버 시 한 단 더 깊게 */
+  --green-strong: var(--house-green);
+  --green-ink: #ffffff; /* 그린 면 위에 올리는 글자 */
+
+  /* Gold — Rewards 전용 (그 외 용도로는 쓰지 않습니다) */
+  --gold: #cba258;
+  --gold-soft: #dfc49d;
+  --gold-wash: #faf6ee;
+  --rewards-green: #33433d; /* Rewards 문맥의 딥 그레이그린 */
+
+  /* Status */
+  --status-red: #c82014;
+  --status-yellow: #fbbc05;
+
+  /* Alpha 래더 — 10% 단위 (오버레이/구분선/상태면) */
+  --black-10: rgba(0, 0, 0, 0.1);
+  --black-20: rgba(0, 0, 0, 0.2);
+  --black-30: rgba(0, 0, 0, 0.3);
+  --black-40: rgba(0, 0, 0, 0.4);
+  --black-50: rgba(0, 0, 0, 0.5);
+  --black-60: rgba(0, 0, 0, 0.6);
+  --black-70: rgba(0, 0, 0, 0.7);
+  --black-80: rgba(0, 0, 0, 0.8);
+  --black-90: rgba(0, 0, 0, 0.9);
+  --white-10: rgba(255, 255, 255, 0.1);
+  --white-20: rgba(255, 255, 255, 0.2);
+  --white-30: rgba(255, 255, 255, 0.3);
+  --white-40: rgba(255, 255, 255, 0.4);
+  --white-50: rgba(255, 255, 255, 0.5);
+  --white-60: rgba(255, 255, 255, 0.6);
+  --white-70: rgba(255, 255, 255, 0.7);
+  --white-80: rgba(255, 255, 255, 0.8);
+  --white-90: rgba(255, 255, 255, 0.9);
+
+  /* Semantic dot colors — 콘텐츠 색이므로 테마 무관.
+     무지개 팔레트는 크림/그린과 충돌하므로 웜 계열로 리맵했습니다. */
+  --dot-seed: #795548; /* 씨앗 · 흙갈색 */
+  --dot-weed: #6f8f7d; /* 잡초 · 세이지 */
+
+  /* Canvas / Grid */
+  --grid-size: 12;
+  --grid-cols: 48;
+  --grid-rows: 64;
+  --canvas-width: 288px;
+
+  /* Typography — SoDoSans / Lander 는 독점 서체이므로 Inter 로 대체합니다.
+     (Starbucks 가이드가 직접 권하는 대체안) */
+  --font-title: "Inter", "Inter var", -apple-system, BlinkMacSystemFont,
+    "Helvetica Neue", Helvetica, Arial, "Apple SD Gothic Neo", "Pretendard",
+    "Noto Sans KR", "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  --font-sans: "Inter", "Inter var", -apple-system, BlinkMacSystemFont,
+    "Helvetica Neue", Helvetica, Arial, "Apple SD Gothic Neo", "Pretendard",
+    "Noto Sans KR", "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* 폰트 스케일 — 1rem = 10px 기준 */
+  --fs-10: 1rem;
+  --fs-10-5: 1.05rem;
+  --fs-12: 1.2rem;
+  --fs-14: 1.4rem;
+  --fs-16: 1.6rem;
+  --fs-18: 1.8rem;
+  --fs-20: 2rem;
+  --fs-24: 2.4rem;
+  /* 히어로 디스플레이 (Lander Tall 자리) */
+  --fs-hero: clamp(2.8rem, 4vw, 4.8rem);
+
+  --lh-tight: 1;
+  --lh-snug: 1.25;
+  --lh-base: 1.5;
+
+  --fw-regular: 400;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* 트래킹 — 시스템 기본은 타이트한 음수값입니다 */
+  --tracking-tight: -0.01em; /* 본문/제목 기본 */
+  --tracking-px: -0.016rem; /* ≈ -0.16px 고정 트래킹 */
+  --tracking-label: 0.04em; /* 소형 대문자 라벨 */
+  --tracking-label-wide: 0.08em;
+  --tracking-eyebrow: 0.03em;
+
+  /* Spacing — space-1..9 (0.4rem → 6.4rem) 래더에 맞춘 px 별칭 */
+  --space-1: 0.4rem;
+  --space-2: 0.8rem;
+  --space-3: 1.2rem;
+  --space-4: 1.6rem;
+  --space-5: 2.4rem;
+  --space-6: 3.2rem;
+  --space-7: 4rem;
+  --space-8: 4.8rem;
+  --space-9: 6.4rem;
+
+  --sp-1: 0.1rem;
+  --sp-2: 0.2rem;
+  --sp-4: 0.4rem;
+  --sp-6: 0.6rem;
+  --sp-8: 0.8rem;
+  --sp-10: 1rem;
+  --sp-12: 1.2rem;
+  --sp-16: 1.6rem;
+  --sp-20: 2rem;
+  --sp-24: 2.4rem;
+  --sp-32: 3.2rem;
+  --sp-40: 4rem;
+
+  /* 거터 */
+  --gutter-sm: 1.6rem;
+  --gutter-md: 2.4rem;
+  --gutter-lg: 4rem;
+
+  /* Radius — 카드 12px / 버튼 50px 풀필 / 원형 50% */
+  --r-2: 0.2rem;
+  --r-4: 0.4rem;
+  --r-6: 0.6rem;
+  --r-8: 0.8rem;
+  --r-12: 0.6rem; /* 카드 기본 — 전적 사이트식 각진 모서리 */
+  --r-20: 2rem;
+  --r-100: 10rem;
+  --r-pill: 5rem; /* 50px 풀필 */
+  --r-full: 5rem;
+  --r-circle: 50%;
+
+  /* Layout */
+  --aside-width: 340px; /* 리포트 좌측 요약 컬럼 폭 */
+  --topbar-height: 64px;
+  --content-max: 1280px;
+  --gutter: 2.4rem;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Motion — 시스템 기본 0.2s ease, 누름은 scale(0.95) */
+  --ease-out: cubic-bezier(0.3, 0, 0, 1);
+  --ease-system: ease;
+  --press-scale: 0.95;
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 400ms;
+  --dur-theme: 320ms;
+  --dur-image: 300ms;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   라이트 (기본) — 웜 크림 캔버스
+   ══════════════════════════════════════════════════════════════════════════ */
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  /* Surfaces — 전적 사이트식: 회색빛 캔버스 위에 화이트 패널(테두리로 구분) */
+  --bg: #e4e1dd; /* 한 단 더 깊은 세라믹 — 카드가 패널로 떠 보이게 */
+  --surface: #ffffff; /* 카드 */
+  --surface-interactive: #f4f3f1; /* 눌리는 면 */
+  --surface-card: #ffffff;
+  --surface-card-alt: #f7f6f4;
+  --surface-hover: #efedea;
+  --surface-translucent: rgba(0, 0, 0, 0.04);
+  --surface-cream: #f2f0eb; /* Neutral Warm · 패널 캔버스 */
+  --surface-ceramic: #e4e1dd;
+  --surface-band: var(--house-green); /* 색블록 피처 밴드 */
+
+  /* 카드 테두리 — 전적 사이트의 또렷한 패널 경계 */
+  --card-border: #d9d5d0;
+
+  /* Text — 87% / 58% 블랙 */
+  --text-base: rgba(0, 0, 0, 0.87);
+  --text-bright: #000000;
+  --text-secondary: rgba(0, 0, 0, 0.58);
+  --text-muted: rgba(0, 0, 0, 0.7);
+  /* 세 번째 텍스트 단계. 흰 면에서 4.5:1 을 넘기려면 secondary(58%)와
+     크게 벌릴 수 없어, 접근성 하한에 맞춰 56% 로 둡니다. */
+  --text-faint: rgba(0, 0, 0, 0.56);
+  --text-on-green: #ffffff;
+  --text-on-green-dim: rgba(255, 255, 255, 0.7);
+
+  /* 그린을 "글자색"으로 쓸 때 — 흰 배경 대비 확보 */
+  --green-text: var(--green-accent);
+
+  /* Semantic */
+  --text-negative: var(--status-red);
+  --text-warning: #8a5200;
+  --text-announcement: #1f5fbf;
+
+  /* Borders */
+  --border: #d6dbde; /* 인풋/구분선 기본 */
+  --border-light: #e8e6e3;
+  --separator: rgba(0, 0, 0, 0.58);
+  --hairline: rgba(0, 0, 0, 0.08);
+  --input-border: #d6dbde;
+
+  /* Chrome */
+  --topbar-bg: rgba(255, 255, 255, 0.88);
+  --main-gradient-top: #ffffff;
+  --scrollbar-thumb: rgba(0, 0, 0, 0.22);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.38);
+  --tile-inset: rgba(0, 0, 0, 0.1);
+  --art-inset: rgba(0, 0, 0, 0.06);
+
+  /* Canvas */
+  --canvas-bg: #ffffff;
+  --canvas-guide: rgba(30, 57, 50, 0.07);
+  --canvas-guide-strong: rgba(30, 57, 50, 0.16);
+  --canvas-ground: rgba(121, 85, 72, 0.3);
+  --canvas-hover: rgba(0, 98, 65, 0.6);
+  /* 점 색이 비어 있을 때의 폴백 (canvasRenderer 가 읽습니다) */
+  --dot-branch: var(--house-green);
+  --dot-leaf: var(--starbucks-green);
+
+  /* Elevation — 전적 사이트식: 섀도우를 거의 없애고 테두리로 구분 */
+  --shadow-card: none;
+  --shadow-card-raised: 0 0 0.5px rgba(0, 0, 0, 0.14), 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-nav: 0 0 0.5px rgba(0, 0, 0, 0.14), 0 -1px 1px rgba(0, 0, 0, 0.12),
+    0 -4px 8px rgba(0, 0, 0, 0.08);
+  --shadow-frap: 0 0 6px rgba(0, 0, 0, 0.24);
+  --shadow-frap-ambient: 0 8px 12px rgba(0, 0, 0, 0.14);
+  --shadow-dialog: 0 0 0.5px rgba(0, 0, 0, 0.14), 0 12px 32px rgba(0, 0, 0, 0.18);
+  --shadow-art: 0 0 0.5px rgba(0, 0, 0, 0.14), 0 4px 24px rgba(0, 0, 0, 0.12);
+  --shadow-input: none;
+  --shadow-input-focus: 0 0 0 1px var(--green-accent) inset;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   다크 — House Green 캔버스 재해석
+   원본 Starbucks 시스템에는 다크 모드가 없으므로, 캔버스를 House Green(3단)
+   으로 내리고 Green Uplift(4단)를 카드 면으로 올려 같은 래더 안에서 해결합니다.
+   ══════════════════════════════════════════════════════════════════════════ */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Surfaces — 전적 사이트식: 캔버스를 더 깊게 내려 카드가 패널로 떠 보이게 */
+  --bg: #16291f; /* House Green 보다 더 깊은 캔버스 */
+  --surface: #24433b; /* 카드 */
+  --surface-interactive: #2b5148;
+  --surface-card: #2b5148;
+  --surface-card-alt: #26473f;
+  --surface-hover: #366055;
+  --surface-translucent: rgba(255, 255, 255, 0.07);
+  --surface-cream: #1e3932;
+  --surface-ceramic: #26473f;
+  --surface-band: #16291f; /* 밴드는 캔버스보다 더 깊게 */
+
+  /* Text */
+  --text-base: #ffffff;
+  --text-bright: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --text-muted: rgba(255, 255, 255, 0.82);
+  --text-faint: rgba(255, 255, 255, 0.6);
+  --text-on-green: #ffffff;
+  --text-on-green-dim: rgba(255, 255, 255, 0.7);
+
+  /* 그린 면 위에서는 연한 민트가 액센트 역할을 합니다 */
+  --green: var(--green-light);
+  --green-hover: #e3f2ec;
+  --green-strong: #b9dcd0;
+  --green-ink: var(--house-green);
+  --green-text: var(--green-light);
+
+  /* Semantic — 딥 그린 대비 확보 */
+  --text-negative: #ff8c84;
+  --text-warning: var(--status-yellow);
+  --text-announcement: #8fc0ff;
+
+  /* Borders */
+  --border: rgba(255, 255, 255, 0.22);
+  --border-light: rgba(255, 255, 255, 0.14);
+  --separator: rgba(255, 255, 255, 0.7);
+  --hairline: rgba(255, 255, 255, 0.1);
+  --input-border: rgba(255, 255, 255, 0.3);
+  --card-border: rgba(255, 255, 255, 0.12);
+
+  /* Chrome */
+  --topbar-bg: rgba(43, 81, 72, 0.88);
+  --main-gradient-top: #2b5148;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.28);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.46);
+  --tile-inset: rgba(0, 0, 0, 0.3);
+  --art-inset: rgba(255, 255, 255, 0.06);
+
+  /* Canvas */
+  --canvas-bg: #16291f;
+  --canvas-guide: rgba(255, 255, 255, 0.07);
+  --canvas-guide-strong: rgba(255, 255, 255, 0.16);
+  --canvas-ground: rgba(223, 196, 157, 0.3);
+  --canvas-hover: rgba(212, 233, 226, 0.75);
+  --dot-branch: #f2f0eb;
+  --dot-leaf: var(--green-light);
+
+  /* Elevation — 전적 사이트식: 섀도우 대신 테두리로 구분 */
+  --shadow-card: none;
+  --shadow-card-raised: 0 0 0.5px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.42);
+  --shadow-nav: 0 0 0.5px rgba(0, 0, 0, 0.4), 0 -1px 2px rgba(0, 0, 0, 0.32),
+    0 -6px 12px rgba(0, 0, 0, 0.26);
+  --shadow-frap: 0 0 6px rgba(0, 0, 0, 0.5);
+  --shadow-frap-ambient: 0 8px 14px rgba(0, 0, 0, 0.34);
+  --shadow-dialog: 0 0 0.5px rgba(0, 0, 0, 0.5), 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-art: 0 0 0.5px rgba(0, 0, 0, 0.4), 0 4px 28px rgba(0, 0, 0, 0.4);
+  --shadow-input: none;
+  --shadow-input-focus: 0 0 0 1px var(--green-light) inset;
+}

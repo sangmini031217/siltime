@@ -1,0 +1,247 @@
+/* ==========================================================================
+   editor.css — 도트 나무 그리기 모달
+   48×64 격자에 직접 점을 찍는 에디터. 사이트 토큰(색/반경/그림자/타이포)을
+   그대로 써서 리포트 화면과 같은 결을 유지합니다.
+   ========================================================================== */
+
+.editor-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-16);
+  background-color: rgba(0, 0, 0, 0.45);
+}
+
+.editor-overlay[hidden] {
+  display: none;
+}
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  width: min(960px, 100%);
+  max-height: calc(100vh - 2 * var(--sp-16));
+  border: 1px solid var(--card-border);
+  border-radius: var(--r-16, 16px);
+  background-color: var(--surface);
+  box-shadow: var(--shadow-dialog);
+  overflow: hidden;
+}
+
+/* ── 헤더 ───────────────────────────────────────────────────────────── */
+.editor__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-12);
+  padding: var(--sp-16) var(--sp-20);
+  border-bottom: 1px solid var(--card-border);
+}
+
+.editor__title {
+  font-size: var(--fs-18);
+  font-weight: 700;
+  color: var(--text-bright);
+}
+
+.editor__sub {
+  margin-top: 2px;
+  font-size: var(--fs-12);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+/* ── 본문: 좌(캔버스) / 우(도구) ─────────────────────────────────────── */
+.editor__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: var(--sp-20);
+  padding: var(--sp-20);
+  overflow: auto;
+}
+
+.editor__stage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  min-width: 0;
+}
+
+.editor__canvas-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-12);
+}
+
+.editor__hint {
+  font-size: var(--fs-12);
+  color: var(--text-secondary);
+}
+
+.editor__canvas-frame {
+  display: flex;
+  justify-content: center;
+  padding: var(--sp-12);
+  border: 1px solid var(--card-border);
+  border-radius: var(--r-8);
+  background-color: var(--canvas-bg);
+  overflow: auto;
+}
+
+#editor-canvas {
+  display: block;
+  border-radius: var(--r-4);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.editor__status {
+  font-size: var(--fs-12);
+  color: var(--text-secondary);
+}
+
+.editor__status b {
+  color: var(--text-base);
+  font-weight: 700;
+}
+
+/* ── 도구 ───────────────────────────────────────────────────────────── */
+.editor__tools {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+}
+
+.editor__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+
+.editor__group--grow {
+  flex: 1 1 auto;
+  justify-content: flex-end;
+}
+
+.editor__group-title {
+  font-size: var(--fs-12);
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.editor__palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8);
+}
+
+.editor__swatch {
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--card-border);
+  border-radius: var(--r-8);
+  cursor: pointer;
+  transition: transform var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+
+.editor__swatch:hover {
+  transform: scale(1.08);
+}
+
+.editor__swatch.is-active {
+  border-color: var(--green-accent);
+  box-shadow: 0 0 0 2px var(--green-accent);
+}
+
+/* 색 추가 버튼 — 점선 테두리 + 가운데 '+'. 안에 숨긴 color input 을 둡니다. */
+.editor__swatch--add {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-style: dashed;
+  background-color: transparent;
+  color: var(--text-secondary);
+}
+
+.editor__swatch--add::after {
+  content: "+";
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.editor__swatch--add:hover {
+  border-color: var(--green-accent);
+  color: var(--green-accent);
+}
+
+.editor__color-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.editor__name {
+  width: 100%;
+  height: 40px;
+  padding: 0 var(--sp-12);
+  border: 1px solid var(--input-border, var(--card-border));
+  border-radius: var(--r-8);
+  background-color: var(--surface);
+  color: var(--text-base);
+  font-family: var(--font-sans);
+  font-size: var(--fs-14);
+}
+
+.editor__name:focus {
+  outline: none;
+  border-color: var(--green-accent);
+  box-shadow: var(--shadow-input-focus);
+}
+
+.editor__warn {
+  margin: 0;
+  padding: var(--sp-10) var(--sp-12);
+  border-radius: var(--r-8);
+  background-color: color-mix(in srgb, var(--status-amber, #c8902b) 14%, transparent);
+  font-size: var(--fs-12);
+  line-height: 1.45;
+  color: var(--text-base);
+}
+
+.editor__warn[hidden] {
+  display: none;
+}
+
+.btn--block {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+/* ── 좁은 화면 ──────────────────────────────────────────────────────── */
+@media (max-width: 760px) {
+  .editor__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .editor__tools {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .editor__group {
+    flex: 1 1 160px;
+  }
+}

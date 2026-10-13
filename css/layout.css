@@ -1,0 +1,515 @@
+/* ==========================================================================
+   layout.css — 분석 사이트 셸 (전적 리포트 레이아웃 · Starbucks 톤 유지)
+   상단 가로 헤더 → 프로필 요약 스트립 → 좌(요약)/우(상세) 2단 리포트
+   색/폰트/카드 질감은 variables.css · components.css 를 그대로 따릅니다.
+   ========================================================================== */
+
+body {
+  background-color: var(--bg);
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* ── 랜딩/리포트 전환 ──────────────────────────────────────────────────────
+   첫 진입은 랜딩(큰 중앙 검색)만 보이고, 검색하면 리포트 셸이 나타납니다.
+   OP.GG 처럼 "검색이 먼저, 전적은 그다음". */
+body.is-landing .site-header,
+body.is-landing .profile-strip,
+body.is-landing .report {
+  display: none;
+}
+
+.landing {
+  display: none;
+}
+
+body.is-landing .landing {
+  /* 도트 캔버스(.dotfield)가 이 요소 전체를 덮고, 모든 도트 좌표는 이 요소의 왼쪽 위가 기준입니다. */
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: var(--sp-24);
+}
+
+/* 데스크톱: 왼쪽 로고·검색·통계·최근 검색, 오른쪽 "집중의 숲". 열 폭은 도트 칸 크기(--G)의 배수입니다.
+   로고(41칸)와 나무(40칸)는 격자 선에 맞추려고 한 칸씩 여유를 둡니다. 좁은 화면은 위아래로 쌓습니다. */
+.landing__inner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: calc(var(--G, 12px) * 42) calc(var(--G, 12px) * 41);
+  column-gap: calc(var(--G, 12px) * 5);
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  /* 글자와 입력만 눌리고, 나머지는 아래 도트 캔버스가 받습니다. (js/dotField.js) */
+  pointer-events: none;
+}
+
+.landing__inner :is(a, button, input, summary, label, form, details, .field) {
+  pointer-events: auto;
+}
+
+.landing__intro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-24);
+  min-width: 0;
+}
+
+.landing__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-16);
+}
+
+.landing__brand .brand__mark {
+  width: 48px;
+  height: 48px;
+}
+
+.landing__wordmark {
+  font-family: var(--font-title);
+  font-size: var(--fs-hero);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.02em;
+  color: var(--text-bright);
+}
+
+.landing__tagline {
+  font-size: var(--fs-16);
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.landing__search {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin-top: var(--sp-8);
+}
+
+.landing__theme {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-circle);
+  color: var(--text-secondary);
+  background-color: var(--surface-interactive);
+  transition: color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
+}
+
+.landing__theme:hover {
+  color: var(--green-text);
+  background-color: var(--surface-hover);
+}
+
+.landing__theme svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ── 랜딩 보조 콘텐츠 (둘러보기 / 통계 / 최근 / 인기 분재) ───────────────── */
+.landing__quick {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+}
+
+.landing__stats {
+  font-size: var(--fs-12);
+  color: var(--text-secondary);
+  text-align: left;
+  min-height: 1.6rem;
+}
+
+.landing__stats b {
+  color: var(--text-base);
+  font-weight: var(--fw-bold);
+}
+
+.landing__section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  margin-top: var(--sp-8);
+}
+
+.landing__section-title {
+  font-size: var(--fs-10-5);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* 최근 검색 — 가로 칩 리스트 */
+.landing__recent {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8);
+}
+
+.landing__recent-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  padding: var(--sp-8) var(--sp-16);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--card-border);
+  background-color: var(--surface);
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+  color: var(--text-base);
+  transition: border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.landing__recent-chip:hover {
+  border-color: var(--green);
+  color: var(--green-text);
+}
+
+.landing__recent-chip span {
+  color: var(--text-secondary);
+}
+
+/* ── 상단 가로 헤더 ───────────────────────────────────────────────────────
+   세로 사이드바를 대체합니다. 로고(좌) · 검색(중앙) · 액션(우) 한 줄. */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background-color: var(--topbar-bg);
+  border-bottom: 1px solid var(--hairline);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .site-header {
+    background-color: var(--surface);
+  }
+}
+
+.site-header__inner {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-24);
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  min-height: var(--topbar-height);
+  padding: var(--sp-10) var(--gutter);
+}
+
+.site-header__search {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 520px;
+}
+
+.site-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-16);
+  margin-left: auto;
+  flex: none;
+}
+
+/* ── 프로필 요약 스트립 (티어 배너) ────────────────────────────────────────
+   전적 사이트의 프로필 헤더처럼 성장 단계(=티어) 색을 깐 배너.
+   House Green 면 위에 흰 글자를 올립니다. */
+.profile-strip {
+  position: relative;
+  background:
+    linear-gradient(100deg, var(--house-green) 0%, var(--green-uplift) 55%, var(--green-accent) 140%);
+  border-bottom: 1px solid var(--house-green);
+  color: #ffffff;
+
+  /* 딥 그린 면 위 토큰 반전 — 지표/배지가 흰 계열로 읽히게 */
+  --text-base: #ffffff;
+  --text-bright: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.72);
+  --text-faint: rgba(255, 255, 255, 0.55);
+  --hairline: rgba(255, 255, 255, 0.16);
+  --surface-card: rgba(255, 255, 255, 0.1);
+  --surface-interactive: rgba(255, 255, 255, 0.16);
+  --art-inset: rgba(255, 255, 255, 0.18);
+  --green: var(--green-light);
+  --green-ink: var(--house-green);
+  --green-text: var(--green-light);
+  --border: rgba(255, 255, 255, 0.3);
+}
+
+.profile-strip__inner {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-24);
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--sp-24) var(--gutter) var(--sp-16);
+}
+
+.profile-strip__avatar {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  flex: none;
+  border-radius: var(--r-12);
+  background: linear-gradient(135deg, var(--surface-card), var(--surface-interactive));
+  box-shadow: inset 0 0 0 1px var(--art-inset);
+}
+
+.profile-strip__seed {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--r-2);
+  background-color: var(--dot-seed);
+}
+
+.profile-strip__id {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+  flex: none;
+}
+
+.profile-strip__name {
+  font-size: var(--fs-24);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+}
+
+.profile-strip__seedid {
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+  color: var(--text-secondary);
+}
+
+/* 핵심 지표 — 가로 나열, 세로 구분선 */
+.profile-strip__stats {
+  display: flex;
+  align-items: stretch;
+  gap: var(--sp-24);
+  margin-left: var(--sp-16);
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.profile-strip__stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding-left: var(--sp-24);
+  border-left: 1px solid var(--hairline);
+}
+
+.profile-strip__stat:first-child {
+  padding-left: 0;
+  border-left: none;
+}
+
+.profile-strip__stat dt {
+  font-size: var(--fs-10-5);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.profile-strip__stat dd {
+  font-size: var(--fs-16);
+  font-weight: var(--fw-bold);
+  color: var(--text-bright);
+}
+
+.profile-strip__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-8);
+  margin-left: auto;
+  flex: none;
+}
+
+.profile-strip__note {
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 0 var(--gutter) var(--sp-16);
+  font-size: var(--fs-12);
+  color: var(--text-secondary);
+}
+
+/* ── 리포트 본문 — 좌(요약) / 우(상세) 2단 ─────────────────────────────────── */
+.report {
+  display: grid;
+  grid-template-columns: var(--aside-width) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--sp-24);
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--sp-24) var(--gutter) var(--sp-40);
+}
+
+.report > .notice {
+  grid-column: 1 / -1;
+}
+
+.report__aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+  min-width: 0;
+  /* 요약 컬럼은 스크롤을 따라오게 고정 */
+  position: sticky;
+  top: calc(var(--topbar-height) + var(--sp-16));
+}
+
+.report__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+  min-width: 0;
+}
+
+/* ── 탭 스트립 (상세 컬럼 상단) ─────────────────────────────────────────── */
+.tabstrip {
+  position: sticky;
+  top: calc(var(--topbar-height) + var(--sp-16));
+  z-index: 10;
+  background-color: var(--bg);
+  padding-bottom: var(--sp-4);
+}
+
+/* ── 섹션 / 카드 공통 ──────────────────────────────────────────────────── */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+  min-width: 0;
+}
+
+.section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-16);
+  min-width: 0;
+}
+
+.panel-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-24);
+  min-width: 0;
+}
+
+/* ── 반응형 ─────────────────────────────────────────────────────────────── */
+
+/* 데스크톱 소형: 요약 컬럼 축소 */
+@media (max-width: 1180px) {
+  :root {
+    --aside-width: 300px;
+  }
+}
+
+/* 태블릿 이하: 2단을 1단으로 접습니다 (요약 → 상세 순서) */
+@media (max-width: 1023px) {
+  .report {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .report__aside {
+    position: static;
+    top: auto;
+  }
+
+  .tabstrip {
+    position: static;
+  }
+}
+
+/* 모바일 */
+@media (max-width: 767px) {
+  :root {
+    --gutter: 1.6rem;
+  }
+
+  .site-header__inner {
+    flex-wrap: wrap;
+    gap: var(--sp-10);
+  }
+
+  .site-header__search {
+    order: 3;
+    flex: 1 1 100%;
+    max-width: none;
+  }
+
+  .profile-strip__inner {
+    flex-wrap: wrap;
+    gap: var(--sp-16);
+  }
+
+  .profile-strip__stats {
+    margin-left: 0;
+    gap: var(--sp-16);
+    width: 100%;
+  }
+
+  .profile-strip__stat {
+    padding-left: var(--sp-16);
+  }
+
+  .profile-strip__actions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .report {
+    gap: var(--sp-16);
+    padding: var(--sp-16) var(--gutter) var(--sp-32);
+  }
+
+  /* 랜딩: 좁은 화면에서 검색창이 넘치지 않도록 패딩/워드마크 축소 */
+  body.is-landing .landing {
+    padding: var(--sp-16);
+  }
+
+  .landing__wordmark {
+    font-size: 3.2rem;
+  }
+
+  .landing__tagline {
+    font-size: var(--fs-14);
+  }
+
+  .field--lg .btn {
+    padding-inline: var(--sp-16);
+  }
+
+  .landing__quick {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}

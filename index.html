@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" id="theme-color-meta" content="#F2F0EB" />
+    <meta
+      name="description"
+      content="SilTime 집중 시간 전적 검색 — Seed ID로 10,000시간 성장 기록을 조회합니다."
+    />
+    <title>SilTime · 집중 시간 전적 검색</title>
+
+    <!-- 테마를 CSS 적용 전에 확정해 첫 페인트 깜빡임을 막습니다 -->
+    <script>
+      (function () {
+        var stored = null;
+        try {
+          stored = localStorage.getItem("siltime:theme");
+        } catch (e) {
+          stored = null;
+        }
+        var theme =
+          stored === "light" || stored === "dark"
+            ? stored
+            : window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
+
+    <link rel="icon" href="data:," />
+    <!-- SoDoSans 는 독점 서체라 Inter 로 대체합니다 (가이드 권장 대체안) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+    />
+    <link rel="stylesheet" href="./css/variables.css" />
+    <link rel="stylesheet" href="./css/reset.css" />
+    <link rel="stylesheet" href="./css/layout.css" />
+    <link rel="stylesheet" href="./css/components.css" />
+    <link rel="stylesheet" href="./css/report.css" />
+    <link rel="stylesheet" href="./css/dot.css" />
+    <link rel="stylesheet" href="./css/editor.css" />
+  </head>
+
+  <body class="is-landing">
+    <!-- ═══════════════ 랜딩 — 화면 전체가 하나의 도트 격자 ═══════════════
+         배경 격자, "SilTime" 로고, 도트 나무(집중의 숲)는 모두 #dotfield 캔버스에 같은 칸 크기로 그려집니다.
+         그 위에 검색창과 글자를 HTML 로 겹쳐 둡니다. 점 하나는 사용자 한 명이고, 눌러서 전적으로 갑니다. -->
+    <div class="landing" id="landing">
+      <canvas
+        class="dotfield"
+        id="dotfield"
+        role="img"
+        aria-label="도트로 그린 나무. 점 하나가 사용자 한 명이며, 같은 내용을 랭킹 목록에서도 고를 수 있습니다."
+      ></canvas>
+
+      <div class="landing__inner">
+        <div class="landing__intro">
+          <a class="landing__brand" href="./" aria-label="SilTime 홈">
+            <!-- 로고 글자는 캔버스가 도트로 찍습니다. 이 요소는 그 자리를 잡아 둡니다. -->
+            <span class="dotword-slot" id="dotword-slot"></span>
+          </a>
+          <p class="landing__tagline">Seed ID로 전적을 검색하거나,<br />숲의 점을 눌러 다른 사람의 기록을 둘러보세요</p>
+
+        <form
+          class="landing__search"
+          id="landing-form"
+          autocomplete="off"
+          novalidate
+          role="search"
+        >
+          <div class="field field--lg">
+            <svg class="field__icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M10.533 1.279c-5.18 0-9.407 4.14-9.407 9.279s4.226 9.279 9.407 9.279c2.234 0 4.29-.77 5.907-2.058l4.353 4.353a1 1 0 1 0 1.414-1.414l-4.344-4.344a9.157 9.157 0 0 0 2.077-5.816c0-5.14-4.226-9.28-9.407-9.28Zm0 2c4.074 0 7.407 3.246 7.407 7.279s-3.333 7.279-7.407 7.279c-4.074 0-7.407-3.246-7.407-7.28 0-4.032 3.333-7.278 7.407-7.278Z"
+                fill="currentColor"
+              />
+            </svg>
+            <label class="sr-only" for="landing-input">Seed ID</label>
+            <input
+              class="field__input"
+              id="landing-input"
+              name="seedId"
+              type="text"
+              size="1"
+              inputmode="latin"
+              spellcheck="false"
+              placeholder="Seed ID 검색 (예: SEED-7F3A29)"
+            />
+            <button class="btn btn--green btn--label" id="landing-submit" type="submit">
+              검색
+            </button>
+          </div>
+        </form>
+
+        <div class="landing__quick">
+          <button class="btn btn--outline btn--label" id="landing-demo" type="button">
+            둘러보기 (샘플 전적)
+          </button>
+          <button class="btn btn--outline btn--label" id="landing-draw" type="button">
+            도트 나무 그리기
+          </button>
+          <button class="landing__theme" id="landing-theme" type="button" aria-label="테마 전환">
+            <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M12.3 2.3a9.7 9.7 0 1 0 9.4 12.2 7.7 7.7 0 0 1-9.4-9.4 9.9 9.9 0 0 1 0-2.8Zm-2.1 2.5a7.7 7.7 0 1 0 9 9.3A9.7 9.7 0 0 1 10.2 4.8Z"
+                fill="currentColor"
+              />
+            </svg>
+            <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M12 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10Zm0-2a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0-13a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0V3a1 1 0 0 1 1-1Zm0 16a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1ZM3 11h2a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2Zm16 0h2a1 1 0 0 1 0 2h-2a1 1 0 0 1 0-2ZM5.6 4.2l1.4 1.4a1 1 0 0 1-1.4 1.4L4.2 5.6a1 1 0 0 1 1.4-1.4Zm11.4 11.4 1.4 1.4a1 1 0 0 1-1.4 1.4L15.6 17a1 1 0 0 1 1.4-1.4ZM18.4 4.2a1 1 0 0 1 1.4 1.4L18.4 7A1 1 0 0 1 17 5.6l1.4-1.4ZM7 15.6A1 1 0 0 1 8.4 17L7 18.4A1 1 0 0 1 5.6 17L7 15.6Z"
+                fill="currentColor"
+              />
+            </svg>
+          </button>
+        </div>
+
+
+          <!-- 글로벌 통계 한 줄 -->
+          <p class="landing__stats" id="landing-stats" role="status" aria-live="polite"></p>
+
+          <!-- 최근 검색 -->
+          <section class="landing__section" id="landing-recent-section" hidden>
+            <h2 class="landing__section-title">최근 검색</h2>
+            <ul class="landing__recent" id="landing-recent"></ul>
+          </section>
+        </div>
+
+        <!-- 집중의 숲 — 나무 그림은 캔버스에 있고, 여기는 설명과 목록만 -->
+        <section class="forest" id="forest" aria-labelledby="forest-title">
+          <div class="forest__head">
+            <h2 class="forest__title" id="forest-title">집중의 숲</h2>
+            <p class="forest__sub">
+              점 하나는 한 사람이에요. 위쪽일수록 랭킹이 높고, 눌러서 전적을 볼 수 있어요.
+            </p>
+          </div>
+          <!-- 나무가 들어갈 자리. 크기는 칸 크기(--G)로 정해집니다. -->
+          <div class="forest__stage" id="forest-stage" aria-hidden="true"></div>
+          <div class="forest__foot">
+            <span class="forest__status" id="forest-status" role="status" aria-live="polite"></span>
+            <button class="forest__link" id="forest-sample-toggle" type="button">샘플 숲 미리보기</button>
+          </div>
+          <details class="forest__list" id="forest-list-wrap" hidden>
+            <summary>랭킹 목록으로 보기</summary>
+            <ol class="forest__rank" id="forest-list"></ol>
+          </details>
+        </section>
+      </div>
+
+      <div class="forest__tip" id="forest-tip" hidden></div>
+      <div class="forest__empty" id="forest-empty" hidden>
+        <strong>아직 숲에 심어진 사람이 없어요</strong>
+        <span>앱에서 동기화하면 첫 번째 점이 됩니다.</span>
+      </div>
+    </div>
+
+    <!-- ═══════════════ 상단 가로 헤더 (분석 사이트 스타일) ═══════════════ -->
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="brand" href="./" aria-label="SilTime 홈">
+          <span class="brand__mark" aria-hidden="true"></span>
+          <span class="brand__name">SilTime</span>
+        </a>
+
+        <div class="site-header__search">
+          <form class="search-row" id="seed-form" autocomplete="off" novalidate role="search">
+            <div class="search-field">
+              <div class="field">
+                <svg class="field__icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M10.533 1.279c-5.18 0-9.407 4.14-9.407 9.279s4.226 9.279 9.407 9.279c2.234 0 4.29-.77 5.907-2.058l4.353 4.353a1 1 0 1 0 1.414-1.414l-4.344-4.344a9.157 9.157 0 0 0 2.077-5.816c0-5.14-4.226-9.28-9.407-9.28Zm0 2c4.074 0 7.407 3.246 7.407 7.279s-3.333 7.279-7.407 7.279c-4.074 0-7.407-3.246-7.407-7.28 0-4.032 3.333-7.278 7.407-7.278Z"
+                    fill="currentColor"
+                  />
+                </svg>
+                <label class="sr-only" for="seed-input">Seed ID</label>
+                <input
+                  class="field__input"
+                  id="seed-input"
+                  name="seedId"
+                  type="text"
+                  inputmode="latin"
+                  spellcheck="false"
+                  placeholder="Seed ID 검색 (예: SEED-7F3A29)"
+                  aria-describedby="seed-hint"
+                />
+                <button
+                  class="field__clear"
+                  id="seed-clear"
+                  type="button"
+                  hidden
+                  aria-label="입력 지우기"
+                >
+                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path
+                      d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm2.47 4.47a.75.75 0 0 1 0 1.06L9.06 8l1.41 1.47a.75.75 0 1 1-1.06 1.06L8 9.06l-1.41 1.47a.75.75 0 0 1-1.06-1.06L6.94 8 5.53 6.53a.75.75 0 0 1 1.06-1.06L8 6.94l1.41-1.47a.75.75 0 0 1 1.06 0Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <button class="btn btn--green btn--label" id="load-button" type="submit">검색</button>
+          </form>
+        </div>
+
+        <div class="site-header__actions">
+          <button
+            class="icon-button icon-button--chrome"
+            id="theme-toggle"
+            type="button"
+            title="밤 모드로 전환"
+            aria-label="밤 모드로 전환"
+          >
+            <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M12.3 2.3a9.7 9.7 0 1 0 9.4 12.2 7.7 7.7 0 0 1-9.4-9.4 9.9 9.9 0 0 1 0-2.8Zm-2.1 2.5a7.7 7.7 0 1 0 9 9.3A9.7 9.7 0 0 1 10.2 4.8Z"
+                fill="currentColor"
+              />
+            </svg>
+            <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M12 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10Zm0-2a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0-13a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0V3a1 1 0 0 1 1-1Zm0 16a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1ZM3 11h2a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2Zm16 0h2a1 1 0 0 1 0 2h-2a1 1 0 0 1 0-2ZM5.6 4.2l1.4 1.4a1 1 0 0 1-1.4 1.4L4.2 5.6a1 1 0 0 1 1.4-1.4Zm11.4 11.4 1.4 1.4a1 1 0 0 1-1.4 1.4L15.6 17a1 1 0 0 1 1.4-1.4ZM18.4 4.2a1 1 0 0 1 1.4 1.4L18.4 7A1 1 0 0 1 17 5.6l1.4-1.4ZM7 15.6A1 1 0 0 1 8.4 17L7 18.4A1 1 0 0 1 5.6 17L7 15.6Z"
+                fill="currentColor"
+              />
+            </svg>
+          </button>
+
+          <div class="toggle-row">
+            <span class="toggle-row__label" id="demo-label">샘플</span>
+            <button
+              class="switch"
+              id="demo-toggle"
+              type="button"
+              role="switch"
+              aria-checked="false"
+              aria-labelledby="demo-label"
+            >
+              <span class="switch__track"><span class="switch__knob"></span></span>
+            </button>
+          </div>
+          <span class="badge badge--idle" id="connection-badge" role="status" aria-live="polite">
+            대기 중
+          </span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ═══════════════ 프로필 요약 바 (가로) ═══════════════ -->
+    <div class="profile-strip">
+      <div class="profile-strip__inner">
+        <span class="profile-strip__avatar" aria-hidden="true">
+          <span class="profile-strip__seed"></span>
+        </span>
+        <div class="profile-strip__id">
+          <span class="eyebrow">집중 트리</span>
+          <h1 class="profile-strip__name" id="tree-owner">데이터 없음</h1>
+          <span class="profile-strip__seedid" id="tree-seed">—</span>
+        </div>
+
+        <dl class="profile-strip__stats">
+          <div class="profile-strip__stat">
+            <dt>누적 집중</dt>
+            <dd id="hero-hours">0시간</dd>
+          </div>
+          <div class="profile-strip__stat">
+            <dt>성장 단계</dt>
+            <dd>
+              <span class="phase-pill phase-pill--inline" id="phase-pill">
+                <span class="phase-pill__glyph" id="phase-glyph" aria-hidden="true"></span>
+                <span id="phase-label">씨앗</span>
+              </span>
+            </dd>
+          </div>
+          <div class="profile-strip__stat">
+            <dt>심은 점</dt>
+            <dd id="hero-dots">0개의 점</dd>
+          </div>
+          <div class="profile-strip__stat">
+            <dt>세션</dt>
+            <dd id="hero-sessions">0회 세션</dd>
+          </div>
+        </dl>
+
+        <div class="profile-strip__actions">
+          <button
+            class="icon-button"
+            id="refresh-button"
+            type="button"
+            aria-label="전적 갱신"
+            title="전적 갱신"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 4V1L8 5l4 4V6a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8Z" fill="currentColor" />
+            </svg>
+          </button>
+          <button
+            class="icon-button"
+            id="pin-button"
+            type="button"
+            aria-pressed="false"
+            title="라이브러리에 추가"
+            aria-label="라이브러리에 추가"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M12 4.2 13.9 8l4.3.6-3.1 3 .7 4.2-3.8-2-3.8 2 .7-4.2-3.1-3L6.1 8 12 4.2Z"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+          <button class="btn btn--outline btn--label" id="copy-link-button" type="button">
+            링크 복사
+          </button>
+          <button class="btn btn--outline btn--label" id="import-button" type="button">
+            앱에서 따라 그리기
+          </button>
+          <button class="btn btn--outline btn--label" id="draw-button" type="button">
+            직접 그리기
+          </button>
+          <!-- 내보내기: 리포트(PDF, 이미지)와 분석용 데이터(엑셀, CSV) -->
+          <div class="export-menu" id="export-menu">
+            <button
+              class="btn btn--outline btn--label"
+              id="export-menu-button"
+              type="button"
+              aria-haspopup="menu"
+              aria-expanded="false"
+              aria-controls="export-menu-list"
+              title="나의 학습 기록을 파일로 저장"
+              disabled
+            >
+              <span id="export-menu-label">내보내기</span>
+              <svg class="export-menu__caret" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+            <ul class="export-menu__list" id="export-menu-list" role="menu" aria-label="내보내기" hidden>
+              <li role="none">
+                <button class="export-menu__item" role="menuitem" type="button" data-export="pdf">
+                  <span class="export-menu__title">PDF 리포트</span>
+                  <span class="export-menu__desc">인쇄 창에서 'PDF로 저장'을 고르세요</span>
+                </button>
+              </li>
+              <li role="none">
+                <button class="export-menu__item" role="menuitem" type="button" data-export="image">
+                  <span class="export-menu__title">이미지 리포트 (PNG)</span>
+                  <span class="export-menu__desc">공유하기 좋은 한 장짜리 그림</span>
+                </button>
+              </li>
+              <li class="export-menu__divider" role="separator"></li>
+              <li role="none">
+                <button class="export-menu__item" role="menuitem" type="button" data-export="xlsx">
+                  <span class="export-menu__title">엑셀 (.xlsx)</span>
+                  <span class="export-menu__desc">분석용 · 요약, 분야별, 카테고리, 기록, 데이터 설명 5개 시트</span>
+                </button>
+              </li>
+              <li role="none">
+                <button class="export-menu__item" role="menuitem" type="button" data-export="csv">
+                  <span class="export-menu__title">CSV (.csv)</span>
+                  <span class="export-menu__desc">분석용 · 기록 원본, 엑셀과 파이썬에서 바로 열림</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <p class="profile-strip__note">
+        <span id="last-updated">아직 조회하지 않았습니다</span>
+        <span class="dot-sep"><span id="seed-hint">공유된 Seed ID로 트리를 조회합니다.</span></span>
+      </p>
+    </div>
+
+    <!-- ═══════════════ 본문 — 좌(요약) / 우(상세) 2단 ═══════════════ -->
+    <main class="report">
+      <!-- file:// 로 직접 열었을 때만 표시 -->
+      <aside class="notice" id="file-protocol-notice" hidden>
+        <h2 class="notice__title">로컬 서버로 열어주세요</h2>
+        <p class="notice__body">
+          지금은 <code>file://</code> 로 열려 있어 브라우저가 ES 모듈 로딩을 차단합니다.
+        </p>
+        <pre class="notice__code">cd ~/Desktop/졸업작품/siltime-viewer
+python3 -m http.server 5173</pre>
+        <p class="notice__body">
+          위 명령 실행 후 <code>http://localhost:5173</code> 로 접속하세요.
+        </p>
+      </aside>
+
+      <!-- ───── 왼쪽: 트리 + 요약 통계 ───── -->
+      <aside class="report__aside">
+        <!-- 트리 캔버스 -->
+        <div class="art card">
+          <div class="art__head">
+            <span class="art__label">픽셀 트리</span>
+            <output class="coord-readout" id="coord-readout" for="tree-canvas">
+              x — · y —
+            </output>
+          </div>
+
+          <div class="canvas-frame" id="canvas-frame">
+            <div class="ruler ruler--x" id="ruler-x" aria-hidden="true"></div>
+            <div class="canvas-frame__body">
+              <div class="ruler ruler--y" id="ruler-y" aria-hidden="true"></div>
+              <div class="canvas-stage" id="canvas-stage">
+                <canvas
+                  id="tree-canvas"
+                  role="img"
+                  aria-label="48 x 64 픽셀 집중 트리"
+                ></canvas>
+                <div class="inspector" id="inspector" hidden>
+                  <div class="inspector__row">
+                    <span class="inspector__swatch" id="inspector-swatch"></span>
+                    <span class="inspector__title" id="inspector-title">—</span>
+                  </div>
+                  <dl class="inspector__grid">
+                    <dt>좌표</dt>
+                    <dd id="inspector-coord">—</dd>
+                    <dt>집중</dt>
+                    <dd id="inspector-focus">—</dd>
+                    <dt>기록</dt>
+                    <dd id="inspector-date">—</dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+            <p class="canvas-frame__caption">
+              <span id="canvas-dot-count">0</span>개의 점 ·
+              <span id="canvas-grid-label">—</span> 그리드
+            </p>
+          </div>
+        </div>
+
+        <!-- 마스터리 진행 (10,000시간) -->
+        <section class="card mastery" aria-label="10,000시간 진행도">
+          <div class="mastery__head">
+            <span class="mastery__value" id="mastery-hours">0시간</span>
+            <span class="mastery__percent" id="mastery-percent">0.00%</span>
+          </div>
+          <div
+            class="progress progress--lg"
+            role="progressbar"
+            id="mastery-progress"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="0"
+          >
+            <div class="progress__fill progress__fill--green" id="mastery-fill"></div>
+          </div>
+          <div class="mastery__foot">
+            <span>목표 10,000시간</span>
+            <span>남은 시간 <span id="mastery-remaining">10,000시간</span></span>
+          </div>
+        </section>
+
+        <!-- 전적 요약 -->
+        <section class="card" aria-label="전적 요약">
+          <div class="card__head">
+            <h2 class="card__title">전적 요약</h2>
+            <span class="card__value" id="summary-total">0시간</span>
+          </div>
+          <dl class="summary-grid" id="summary-grid"></dl>
+        </section>
+
+        <!-- 카테고리 분포 -->
+        <section class="card" aria-label="카테고리 분포">
+          <div class="card__head">
+            <h2 class="card__title">카테고리 분포</h2>
+            <span class="card__value" id="breakdown-total">0시간</span>
+          </div>
+          <div class="stack-bar" id="stack-bar" aria-hidden="true"></div>
+          <ul class="chip-list" id="chip-list"></ul>
+        </section>
+
+        <!-- 성장 단계 -->
+        <section class="card" aria-label="성장 단계">
+          <div class="card__head">
+            <h2 class="card__title">성장 단계</h2>
+          </div>
+          <p class="card__desc" id="phase-desc">아직 조회된 트리가 없습니다.</p>
+          <ol class="milestone-track" id="milestone-track"></ol>
+        </section>
+
+        <!-- 내 라이브러리 -->
+        <section class="card library" aria-label="내 라이브러리">
+          <div class="library__head">
+            <span class="library__title">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M3 22a1 1 0 0 1-1-1V3a1 1 0 0 1 2 0v18a1 1 0 0 1-1 1Zm12.5-19.866A1 1 0 0 0 14 3v18a1 1 0 0 0 1.5.866l13-7.5a1 1 0 0 0 0-1.732l-13-7.5ZM9 3a1 1 0 0 0-2 0v18a1 1 0 0 0 2 0V3Z"
+                  fill="currentColor"
+                />
+              </svg>
+              내 라이브러리
+            </span>
+            <button class="text-button" id="history-clear" type="button">비우기</button>
+          </div>
+          <ul class="library__list" id="history-list"></ul>
+        </section>
+      </aside>
+
+      <!-- ───── 오른쪽: 탭 네비 + 상세 패널 ───── -->
+      <div class="report__main">
+        <nav class="tabstrip" aria-label="보기 전환">
+          <ul class="nav nav--strip" id="nav-list" role="tablist"></ul>
+        </nav>
+
+        <div class="panel-group">
+          <!-- 종합 -->
+          <div class="section" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
+            <div class="card">
+              <div class="card__head">
+                <h2 class="card__title">최근 기록</h2>
+                <button class="text-button" id="goto-records" type="button">전체 보기</button>
+              </div>
+              <ol class="record-list" id="recent-list"></ol>
+            </div>
+          </div>
+
+          <!-- 기록 -->
+          <div
+            class="section"
+            id="panel-records"
+            role="tabpanel"
+            aria-labelledby="tab-records"
+            hidden
+          >
+            <div class="card">
+              <div class="card__head">
+                <h2 class="card__title">기록</h2>
+                <span class="card__value" id="records-count">0개</span>
+              </div>
+
+              <div class="toolbar">
+                <div
+                  class="filter-bar"
+                  id="records-filter"
+                  role="group"
+                  aria-label="카테고리 필터"
+                ></div>
+                <label class="sr-only" for="records-sort">정렬 기준</label>
+                <select class="select" id="records-sort"></select>
+              </div>
+
+              <ol class="record-list" id="records-list"></ol>
+              <button class="btn btn--dark btn--block" id="records-more" type="button" hidden>
+                더 보기
+              </button>
+            </div>
+          </div>
+
+          <!-- 카테고리 -->
+          <div
+            class="section"
+            id="panel-categories"
+            role="tabpanel"
+            aria-labelledby="tab-categories"
+            hidden
+          >
+            <!-- 분야별 10,000시간 — 나무는 전체 합산, 이 카드는 분야 하나하나의 진행도 -->
+            <div class="card" aria-labelledby="field-mastery-title">
+              <div class="card__head">
+                <h2 class="card__title" id="field-mastery-title">분야별 10,000시간</h2>
+                <span class="card__value" id="field-mastery-count">0개 분야</span>
+              </div>
+              <p class="card__desc">
+                나무는 모든 분야를 합친 시간이에요. 분야마다 따로 10,000시간을 향해 쌓여요.
+              </p>
+              <ul class="field-mastery" id="field-mastery"></ul>
+            </div>
+            <div class="card">
+              <div class="card__head">
+                <h2 class="card__title">카테고리 상세</h2>
+                <span class="card__value" id="category-total">0시간</span>
+              </div>
+
+              <div class="table-scroll">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">카테고리</th>
+                      <th scope="col" class="data-table__num">점</th>
+                      <th scope="col" class="data-table__num">총 시간</th>
+                      <th scope="col" class="data-table__num">평균</th>
+                      <th scope="col">비중</th>
+                    </tr>
+                  </thead>
+                  <tbody id="category-table-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ───── 글로벌 갤러리 (커뮤니티 분재) ───── -->
+          <div
+            class="section"
+            id="panel-gallery"
+            role="tabpanel"
+            aria-labelledby="tab-gallery"
+            hidden
+          >
+            <div class="section__head">
+              <h2 class="section__title">글로벌 갤러리</h2>
+              <span class="section__value" id="gallery-count">0명</span>
+            </div>
+
+            <div class="toolbar">
+              <div
+                class="filter-bar"
+                id="gallery-sort"
+                role="group"
+                aria-label="갤러리 정렬"
+              ></div>
+              <span class="gallery-status" id="gallery-status" role="status" aria-live="polite"></span>
+            </div>
+
+            <ul class="bonsai-grid" id="gallery-grid"></ul>
+
+            <button class="btn btn--dark btn--block" id="gallery-more" type="button" hidden>
+              더 보기
+            </button>
+          </div>
+
+          <!-- ───── 랭킹 & 학습 패턴 분석 ───── -->
+          <div
+            class="section"
+            id="panel-ranking"
+            role="tabpanel"
+            aria-labelledby="tab-ranking"
+            hidden
+          >
+            <div class="section__head">
+              <h2 class="section__title">랭킹 &amp; 분석</h2>
+              <span class="section__value" id="ranking-source">샘플 데이터</span>
+            </div>
+
+            <!-- 전역 요약 -->
+            <dl class="summary-grid" id="global-summary"></dl>
+
+            <!-- 상대적 백분위 -->
+            <div class="card percentile is-idle" id="percentile-card">
+              <div class="card__head">
+                <h3 class="card__title">내 위치</h3>
+                <span class="percentile__value" id="percentile-value">—</span>
+              </div>
+
+              <div class="percentile__gauge">
+                <div class="percentile__track">
+                  <div class="percentile__fill" id="percentile-fill"></div>
+                </div>
+                <span class="percentile__marker" id="percentile-marker"></span>
+              </div>
+
+              <div class="percentile__scale" aria-hidden="true">
+                <span>하위</span>
+                <span>중간</span>
+                <span>상위</span>
+              </div>
+
+              <p class="card__desc" id="percentile-rank">
+                조회하면 전체 순위를 비교합니다
+              </p>
+            </div>
+
+            <!-- 리더보드 -->
+            <div class="card">
+              <div class="card__head">
+                <h3 class="card__title">Top Focusers</h3>
+                <span class="card__value" id="leaderboard-note">누적 집중 시간순</span>
+              </div>
+
+              <div class="table-scroll">
+                <table class="data-table leaderboard">
+                  <thead>
+                    <tr>
+                      <th scope="col">순위</th>
+                      <th scope="col">유저</th>
+                      <th scope="col" class="data-table__num">누적 시간</th>
+                      <th scope="col">단계</th>
+                      <th scope="col" class="data-table__num">좋아요</th>
+                    </tr>
+                  </thead>
+                  <tbody id="leaderboard-body"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- 전체 학습 트렌드 -->
+            <div class="card">
+              <div class="card__head">
+                <h3 class="card__title">전체 카테고리 점유율</h3>
+                <span class="card__value" id="share-note">전체 유저 합산</span>
+              </div>
+              <ul class="share-list" id="category-share"></ul>
+            </div>
+
+            <!-- 일일 평균 비교 -->
+            <div class="card">
+              <div class="card__head">
+                <h3 class="card__title">일일 집중 시간 비교</h3>
+              </div>
+              <div id="comparison-chart"></div>
+              <p class="card__desc" id="comparison-caption"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ═══════════════ 도트 드로잉 에디터 (모달) ═══════════════
+         48×64 격자에 직접 점을 찍어 나무를 그리고, 앱으로 "따라 그리기" 링크를 보냅니다. -->
+    <div class="editor-overlay" id="editor-overlay" hidden>
+      <div
+        class="editor"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="editor-title"
+      >
+        <header class="editor__head">
+          <div class="editor__titles">
+            <h2 class="editor__title" id="editor-title">도트 나무 그리기</h2>
+            <p class="editor__sub">
+              맨 아랫줄(지면)에서 시작해 점을 이어 그리세요. 앱에서 따라 그릴 수 있어요.
+            </p>
+          </div>
+          <button class="icon-button" id="editor-close" type="button" aria-label="닫기">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6 6.4 5Z"
+                fill="currentColor"
+              />
+            </svg>
+          </button>
+        </header>
+
+        <div class="editor__body">
+          <!-- 왼쪽: 그리기 캔버스 -->
+          <div class="editor__stage">
+            <div class="editor__canvas-head">
+              <span class="editor__hint">클릭·드래그로 칠하고, 칠한 칸을 다시 누르면 지워져요</span>
+              <output class="coord-readout" id="editor-readout">x — · y —</output>
+            </div>
+            <div class="editor__canvas-frame" id="editor-frame">
+              <canvas
+                id="editor-canvas"
+                role="img"
+                aria-label="48 x 64 도트 나무 그리기 캔버스"
+              ></canvas>
+            </div>
+            <p class="editor__status" id="editor-status" role="status" aria-live="polite">
+              <span id="editor-count">0</span>개의 점
+            </p>
+          </div>
+
+          <!-- 오른쪽: 도구 -->
+          <div class="editor__tools">
+            <section class="editor__group">
+              <h3 class="editor__group-title">색</h3>
+              <div class="editor__palette" id="editor-palette" role="group" aria-label="색 선택"></div>
+            </section>
+
+            <section class="editor__group">
+              <h3 class="editor__group-title">이름</h3>
+              <input
+                class="editor__name"
+                id="editor-name"
+                type="text"
+                maxlength="40"
+                placeholder="나무 이름 (선택)"
+                autocomplete="off"
+                spellcheck="false"
+              />
+            </section>
+
+            <section class="editor__group">
+              <button class="btn btn--outline btn--block" id="editor-clear" type="button">
+                전체 지우기
+              </button>
+            </section>
+
+            <section class="editor__group editor__group--grow">
+              <p class="editor__warn" id="editor-warn" hidden></p>
+            </section>
+
+            <section class="editor__group">
+              <button class="btn btn--green btn--block" id="editor-import" type="button" disabled>
+                앱으로 가져오기
+              </button>
+              <button class="btn btn--outline btn--block" id="editor-copy" type="button" disabled>
+                링크 복사
+              </button>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 모듈이 차단되는 환경에서도 반드시 실행되는 클래식 스크립트 -->
+    <script>
+      if (window.location.protocol === "file:") {
+        var notice = document.getElementById("file-protocol-notice");
+        if (notice) notice.hidden = false;
+      }
+    </script>
+    <script type="module" src="./js/app.js"></script>
+  </body>
+</html>
