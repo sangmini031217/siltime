@@ -7,7 +7,7 @@
  *  - 잡초(weed): 지면 행에 초록 점, 같은 칸에 여러 개가 쌓입니다.
  */
 
-import { COLS, DOT_TYPE, GROUND_ROW, PALETTE, ROWS } from "./config.js";
+import { COLS, DOT_TYPE, GROUND_ROW, MILESTONE_STAGES, PALETTE, ROWS } from "./config.js";
 
 /* ── 카테고리 정의 ──────────────────────────────────────────────────────── */
 
@@ -205,7 +205,43 @@ function buildWeeds() {
   }));
 }
 
-const DOTS = [...buildMainTree(), ...buildWeeds()];
+/**
+ * 대표 나무의 점별 집중 시간·기록 날짜를 카테고리 총합과 맞춥니다.
+ *
+ * `buildMainTree` 는 점마다 15~80분을 따로 뽑기 때문에 카테고리별 점 시간 합이
+ * 카테고리 누적 시간(예: 개발 670시간)의 3분의 1에도 못 미칩니다. 전적 화면의
+ * 카테고리 표가 두 숫자를 나란히 보여 주므로 눈에 띄게 어긋납니다. 또 씨앗이
+ * 가장 최근 날짜라서 기록 목록의 순서가 거꾸로였습니다.
+ *
+ * 점의 위치·색·개수는 그대로 두고 시간과 날짜만 다시 나눕니다.
+ */
+function reconcileMainTree(dots) {
+  const growth = dots.filter((dot) => dot.type !== DOT_TYPE.SEED && dot.type !== DOT_TYPE.WEED);
+  const roll = (n) => pseudoRandom(n * 3.17 + 91);
+
+  const weights = growth.map((_, i) => 0.5 + roll(i));
+  const weightSum = new Map();
+  growth.forEach((dot, i) => {
+    weightSum.set(dot.categoryId, (weightSum.get(dot.categoryId) ?? 0) + weights[i]);
+  });
+  const secondsByCategory = new Map(CATEGORIES.map((c) => [c.id, c.focusSeconds]));
+  growth.forEach((dot, i) => {
+    dot.focusSeconds = Math.round(
+      ((secondsByCategory.get(dot.categoryId) ?? 0) * weights[i]) / (weightSum.get(dot.categoryId) || 1),
+    );
+  });
+
+  // 씨앗이 가장 오래되고 위로 자랄수록 최근 (약 1.2일 간격은 기존 값 유지)
+  const nonWeed = dots.filter((dot) => dot.type !== DOT_TYPE.WEED);
+  nonWeed.forEach((dot, index) => {
+    dot.createdAt = new Date(
+      EXPORT_EPOCH_MS - (nonWeed.length - 1 - index) * ONE_DAY_MS * 1.2,
+    ).toISOString();
+  });
+  return dots;
+}
+
+const DOTS = reconcileMainTree([...buildMainTree(), ...buildWeeds()]);
 
 
 const TOTAL_FOCUS_SECONDS = CATEGORIES.reduce((sum, c) => sum + c.focusSeconds, 0);
@@ -237,6 +273,7 @@ export const MOCK_TREE = Object.freeze({
   seed: { x: Math.floor(COLS / 2), y: GROUND_ROW },
   globalFocusSeconds: TOTAL_FOCUS_SECONDS,
   sessionCount: 1_842,
+  activeDays: 520,
   longestStreakDays: 96,
   milestone: { stageId: "young-tree" },
   categories: CATEGORIES,
@@ -419,8 +456,8 @@ function splitCategories(totalSeconds, weights) {
   });
 }
 
-/** 갤러리/리더보드에 올릴 유저 원본 정의 */
-const COMMUNITY_SEEDS = [
+/** 손으로 쓴 유저. 시연에서 눈에 띄는 대표 인물들입니다. */
+const HAND_SEEDS = [
   { seedId: "SEED-7F3A29", nickname: "집중하는 상민", hours: 1224, likes: 184, dots: 420, days: 520,
     mix: [{ id: "coding", weight: 55 }, { id: "design", weight: 21 }, { id: "reading", weight: 13 }, { id: "fitness", weight: 7 }, { id: "language", weight: 4 }] },
   { seedId: "SEED-A41C07", nickname: "새벽형 주니어", hours: 2310, likes: 412, dots: 760, days: 760,
@@ -451,12 +488,154 @@ const COMMUNITY_SEEDS = [
     mix: [{ id: "coding", weight: 40 }, { id: "language", weight: 30 }, { id: "major", weight: 20 }, { id: "fitness", weight: 10 }] },
 ];
 
+/* ── 대량 샘플 유저 생성 ────────────────────────────────────────────────────
+ * 14명만으로는 숲이 듬성듬성하고 랭킹·갤러리가 휑해 보입니다. 시연에서 "사람이 실제로
+ * 모여 있는 서비스" 느낌이 나도록, 손으로 쓴 유저 뒤에 결정적(deterministic)으로 생성한
+ * 유저를 이어 붙여 모두 `SAMPLE_USER_COUNT` 명으로 맞춥니다.
+ *
+ * 난수 시드가 고정이라 새로고침해도, 어느 기기에서 열어도 같은 사람이 같은 순위에 있습니다.
+ */
+
+/** 샘플 유저 총 인원 (손으로 쓴 유저 포함). 서버 피드 상한(200)보다 작게 둡니다. */
+const SAMPLE_USER_COUNT = 120;
+
+/** 생성 유저의 난수 시드. 바꾸면 사람들이 전부 바뀝니다. */
+const GENERATED_SEED = 20261013;
+
+/** mulberry32 — 같은 시드는 언제나 같은 수열을 냅니다. */
+function seededRandom(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const NICK_ADJECTIVES = [
+  "새벽형", "야간", "주말", "꾸준한", "느긋한", "집요한", "조용한", "열정적인", "졸린", "부지런한",
+  "침착한", "든든한", "작은", "오늘도", "내일은", "끈질긴", "담담한", "명랑한", "진지한", "차분한",
+  "용감한", "엉뚱한", "성실한", "단단한", "날랜", "느림보", "깔끔한", "따뜻한", "씩씩한", "묵묵한",
+];
+
+const NICK_NOUNS = [
+  "개발자", "수험생", "대학원생", "러너", "독서가", "디자이너", "취준생", "직장인", "학부생", "번역가",
+  "피아니스트", "코더", "연구원", "작가", "요리사", "여행자", "기획자", "메이커", "게이머", "화가",
+  "노마드", "수영인", "등산가", "필사가", "분석가", "편집자", "크리에이터", "도전자", "탐험가", "농부",
+];
+
+/** 카테고리 조합의 틀. 첫 항목이 대표 분야이고 비중이 가장 큽니다. */
+const CATEGORY_ARCHETYPES = [
+  ["coding", "major", "reading"],
+  ["coding", "design"],
+  ["coding", "language", "fitness"],
+  ["language", "reading"],
+  ["language", "major"],
+  ["major", "reading", "coding"],
+  ["major", "language"],
+  ["design", "coding", "reading"],
+  ["design", "reading"],
+  ["reading", "language", "fitness"],
+  ["reading", "major"],
+  ["fitness", "reading", "language"],
+  ["fitness", "coding"],
+  ["coding"],
+  ["major"],
+  ["language"],
+];
+
+/** 손으로 쓴 유저 뒤에 이어 붙일 생성 유저를 만듭니다. */
+function generateSeeds(count, taken) {
+  const random = seededRandom(GENERATED_SEED);
+  const usedIds = new Set(taken.map((entry) => entry.seedId));
+  const usedNames = new Set(taken.map((entry) => entry.nickname));
+  const result = [];
+
+  while (result.length < count) {
+    // ── Seed ID: "SEED-" + 16진수 6자리, 서로 겹치지 않게
+    const seedId = `SEED-${Math.floor(random() * 0xffffff)
+      .toString(16)
+      .toUpperCase()
+      .padStart(6, "0")}`;
+    if (usedIds.has(seedId)) continue;
+
+    // ── 닉네임: "형용사 직업" 또는 "직업 N년차"
+    const adjective = NICK_ADJECTIVES[Math.floor(random() * NICK_ADJECTIVES.length)];
+    const noun = NICK_NOUNS[Math.floor(random() * NICK_NOUNS.length)];
+    const nickname =
+      random() < 0.7 ? `${adjective} ${noun}` : `${noun} ${1 + Math.floor(random() * 9)}년차`;
+    if (usedNames.has(nickname)) continue;
+
+    // ── 누적 시간: 소수가 아주 많이 하고 대다수는 적게 하는 긴 꼬리 분포.
+    // 8시간 ~ 약 4,200시간. 제곱으로 한쪽에 쏠리게 해 상위권이 드물게 나옵니다.
+    const skew = random() ** 1.7;
+    const hours = Math.max(8, Math.round(8 * 525 ** skew));
+
+    // ── 좋아요: 시간에 대체로 비례하되 편차가 큽니다 (인기는 노력과 꼭 일치하지 않음)
+    const likes = Math.round(hours * (0.02 + random() * 0.4) * (0.4 + random() * 1.2));
+
+    // ── 점 수: 앱에서 실제로 심은 도트. 시간의 약 1/3, 너무 작으면 나무 모양이 안 나옵니다.
+    const dots = Math.min(1100, Math.max(40, Math.round(hours * (0.27 + random() * 0.12))));
+
+    // ── 활동일: 하루 평균 1~3.5시간
+    const days = Math.max(4, Math.min(1400, Math.round(hours / (1 + random() * 2.5))));
+
+    // ── 카테고리: 틀 하나를 고르고 대표 분야에 큰 비중을 줍니다.
+    const archetype = CATEGORY_ARCHETYPES[Math.floor(random() * CATEGORY_ARCHETYPES.length)];
+    const mix = archetype.map((id, position) => ({
+      id,
+      weight: position === 0 ? 45 + Math.round(random() * 40) : 8 + Math.round(random() * 22),
+    }));
+
+    usedIds.add(seedId);
+    usedNames.add(nickname);
+    result.push({ seedId, nickname, hours, likes, dots, days, mix });
+  }
+  return result;
+}
+
+/** 갤러리/리더보드에 올릴 유저 원본 정의 (손으로 쓴 유저 + 생성 유저) */
+const COMMUNITY_SEEDS = [
+  ...HAND_SEEDS,
+  ...generateSeeds(Math.max(0, SAMPLE_USER_COUNT - HAND_SEEDS.length), HAND_SEEDS),
+];
+
+/** seedId → 원본 정의 */
+const COMMUNITY_SEED_BY_ID = new Map(COMMUNITY_SEEDS.map((entry) => [entry.seedId, entry]));
+
+/**
+ * 유저 한 명의 나무 점을 만듭니다. 갤러리 썸네일과 상세 전적이 같은 모양이 되도록
+ * 두 곳 모두 이 함수를 씁니다.
+ *
+ * `growMiniTree` 는 색을 무작위로 뽑아서 점이 적으면 어떤 카테고리는 점이 하나도
+ * 없을 수 있습니다. 전적 화면의 카테고리 표가 "집중 12시간 · 0점"처럼 모순되어 보이므로,
+ * 점이 없는 카테고리에는 잎 점 하나를 넘겨 줍니다.
+ */
+function buildUserDots(entry) {
+  const categoryIds = entry.mix.map((m) => m.id);
+  const dots = growMiniTree(entry.seedId, entry.dots, categoryIds);
+
+  const used = new Set(dots.map((dot) => dot.categoryId));
+  const leaves = dots.filter((dot) => dot.type === DOT_TYPE.LEAF);
+  let cursor = leaves.length - 1;
+  for (const id of categoryIds) {
+    if (used.has(id) || cursor < 0) continue;
+    const dot = leaves[cursor];
+    dot.categoryId = id;
+    dot.colorHex = CATEGORY_BY_ID.get(id)?.colorHex ?? dot.colorHex;
+    cursor -= 1;
+  }
+  return dots;
+}
+
 /** 갤러리 / 리더보드용 유저 목록. `GET /api/community/feed` 와 같은 형태. */
 export const MOCK_COMMUNITY_FEED = Object.freeze(
   COMMUNITY_SEEDS.map((entry, index) => {
     const totalSeconds = entry.hours * 3600;
     const categories = splitCategories(totalSeconds, entry.mix);
-    const categoryIds = entry.mix.map((m) => m.id);
+    const dots = buildUserDots(entry);
 
     return Object.freeze({
       seedId: entry.seedId,
@@ -465,18 +644,153 @@ export const MOCK_COMMUNITY_FEED = Object.freeze(
       /** 레벨 — iOS FocusProgressionEngine 과 같은 곡선: n(n-1)/2 시간 */
       level: Math.max(1, Math.floor((1 + Math.sqrt(1 + 8 * entry.hours)) / 2)),
       likes: entry.likes,
-      dotCount: entry.dots,
+      // 대표 유저는 상세 전적(421점 − 씨앗)과 맞춘 값을 그대로 쓰고,
+      // 나머지는 실제로 만들어진 점 수를 씁니다. 그래야 카드의 숫자와 전적 화면의 숫자가 같습니다.
+      dotCount: entry.seedId === MOCK_TREE.seedId ? entry.dots : dots.length,
       activeDays: entry.days,
       /** 대표 카테고리 = 비중 1위 */
       primaryCategory: categories.slice().sort((a, b) => b.focusSeconds - a.focusSeconds)[0],
       categories,
       grid: { cols: COLS, rows: ROWS },
-      dots: growMiniTree(entry.seedId, entry.dots, categoryIds),
-      // 최신순 정렬용. 인덱스를 시간 간격으로 흩뜨립니다.
-      syncedAt: new Date(EXPORT_EPOCH_MS - index * 5 * 3_600_000).toISOString(),
+      dots,
+      // 최신순 정렬용. 손으로 쓴 유저는 촘촘하게, 생성 유저는 최근 3주에 걸쳐 흩뜨립니다.
+      syncedAt: new Date(
+        EXPORT_EPOCH_MS -
+          (index < HAND_SEEDS.length
+            ? index * 5 * 3_600_000
+            : (HAND_SEEDS.length * 5 + pseudoRandom(index * 7.31) * 21 * 24) * 3_600_000),
+      ).toISOString(),
     });
   }),
 );
+
+/* ── 샘플 유저의 상세 전적 ──────────────────────────────────────────────────
+ * 숲이나 갤러리에서 샘플 유저를 누르면 그 사람의 전적이 열려야 합니다. 서버에 없는
+ * Seed ID 를 조회하면 실패하고, 실패하면 항상 대표 나무가 열려서 누구를 눌러도 같은
+ * 화면이 나왔습니다. 그래서 샘플 유저는 Seed ID 만으로 상세 전적을 만들어 줍니다.
+ */
+
+/** 상세 전적의 "내보낸 시각". 모든 샘플 유저가 같은 기준 시각을 씁니다. */
+const ONE_HOUR_MS = 3_600_000;
+
+/**
+ * 샘플 유저의 상세 전적(`GET /api/tree/:seedId` 응답과 같은 형태)을 만듭니다.
+ *
+ *  · 점은 갤러리 썸네일과 같은 모양입니다 (`buildUserDots` 공유).
+ *  · 점마다 집중 시간·카테고리·기록 날짜가 있어 "기록" 탭이 채워집니다.
+ *  · 카테고리별 점들의 집중 시간 합이 그 카테고리의 누적 시간과 같게 나눕니다.
+ *    전적 화면이 두 숫자를 나란히 보여 주기 때문에, 어긋나면 한눈에 눈에 띕니다.
+ *  · 잡초는 지면 행에서 나무 밑동과 겹치지 않는 자리에 흩뿌립니다.
+ *
+ * @param {string} seedId
+ * @returns {object|null} 샘플 유저가 아니면 null
+ */
+function buildUserTree(seedId) {
+  const entry = COMMUNITY_SEED_BY_ID.get(seedId);
+  if (!entry) return null;
+
+  const random = seededRandom(
+    [...seedId].reduce((acc, ch) => (Math.imul(acc, 31) + ch.charCodeAt(0)) >>> 0, 17),
+  );
+
+  const totalSeconds = entry.hours * 3600;
+  const categories = splitCategories(totalSeconds, entry.mix);
+  const base = buildUserDots(entry);
+  const growth = base.filter((dot) => dot.type !== DOT_TYPE.SEED);
+
+  // ── 점마다 집중 시간: 카테고리별로 무작위 가중치를 주고 그 카테고리 총합에 맞춰 나눕니다.
+  const weightByIndex = growth.map(() => 0.5 + random());
+  const weightSum = new Map();
+  growth.forEach((dot, i) => {
+    weightSum.set(dot.categoryId, (weightSum.get(dot.categoryId) ?? 0) + weightByIndex[i]);
+  });
+  const secondsByCategory = new Map(categories.map((c) => [c.id, c.focusSeconds]));
+
+  // ── 기록 날짜: 씨앗이 가장 오래되고 위로 자랄수록 최근입니다.
+  // 활동 기간(days)을 1.4배 넓혀 쉬는 날을 반영합니다.
+  const spanMs = Math.min(entry.days * 1.4, 900) * ONE_DAY_MS;
+  const stepMs = spanMs / Math.max(1, base.length);
+
+  const dots = base.map((dot, index) => {
+    const isSeed = dot.type === DOT_TYPE.SEED;
+    const growthIndex = isSeed ? -1 : index - 1;
+    const focusSeconds = isSeed
+      ? 0
+      : Math.round(
+          ((secondsByCategory.get(dot.categoryId) ?? 0) * weightByIndex[growthIndex]) /
+            (weightSum.get(dot.categoryId) || 1),
+        );
+
+    return {
+      id: `dot-${dot.x}-${dot.y}`,
+      x: dot.x,
+      y: dot.y,
+      type: dot.type,
+      categoryId: dot.categoryId,
+      colorHex: dot.colorHex,
+      focusSeconds,
+      createdAt: new Date(EXPORT_EPOCH_MS - (base.length - 1 - index) * stepMs).toISOString(),
+    };
+  });
+
+  // ── 잡초: 활동이 길수록 조금 더 생기지만 대부분 0~9개 자리.
+  const groundTaken = new Set(dots.filter((dot) => dot.y === GROUND_ROW).map((dot) => dot.x));
+  const weedSpotCount = Math.min(9, Math.floor(random() * 3 + entry.days / 180));
+  const weeds = [];
+  let guard = 0;
+  while (weeds.length < weedSpotCount && guard < 200) {
+    guard += 1;
+    const x = 1 + Math.floor(random() * (COLS - 2));
+    if (groundTaken.has(x)) continue;
+    groundTaken.add(x);
+    weeds.push({
+      id: `weed-${x}-${GROUND_ROW}`,
+      x,
+      y: GROUND_ROW,
+      type: DOT_TYPE.WEED,
+      count: 1 + Math.floor(random() * 4),
+      categoryId: null,
+      colorHex: PALETTE.weed,
+      focusSeconds: 0,
+      createdAt: new Date(EXPORT_EPOCH_MS - (1 + Math.floor(random() * 60)) * ONE_DAY_MS).toISOString(),
+    });
+  }
+
+  // 성장 단계: 누적 시간이 넘긴 마지막 단계
+  const stage =
+    [...MILESTONE_STAGES].reverse().find((s) => entry.hours >= s.minHours) ?? MILESTONE_STAGES[0];
+
+  return {
+    schemaVersion: "1.2",
+    seedId,
+    ownerNickname: entry.nickname,
+    exportedAt: new Date(EXPORT_EPOCH_MS).toISOString(),
+    timezone: "Asia/Seoul",
+    grid: { cols: COLS, rows: ROWS },
+    seed: { x: Math.floor(COLS / 2), y: GROUND_ROW },
+    globalFocusSeconds: totalSeconds,
+    sessionCount: Math.round(entry.hours * (1.1 + random() * 0.9)),
+    activeDays: entry.days,
+    longestStreakDays: Math.min(entry.days, Math.round(entry.days * (0.08 + random() * 0.27)) + 3),
+    milestone: { stageId: stage.id },
+    categories,
+    dots: [...dots, ...weeds],
+  };
+}
+
+/**
+ * 샘플 유저 한 명의 상세 전적. 샘플 유저가 아니면 `null`.
+ *
+ * 대표 유저(SEED-7F3A29)는 손으로 만든 대표 나무를 그대로 돌려줍니다.
+ *
+ * @param {string} seedId 대소문자·공백은 무시합니다.
+ */
+export function getMockTreeFor(seedId) {
+  const id = typeof seedId === "string" ? seedId.trim().toUpperCase() : "";
+  if (!id) return null;
+  if (id === MOCK_TREE.seedId) return getMockTree();
+  return buildUserTree(id);
+}
 
 /** 전역 집계 통계. `GET /api/community/stats` 와 같은 형태. */
 export const MOCK_COMMUNITY_STATS = Object.freeze(buildCommunityStats());

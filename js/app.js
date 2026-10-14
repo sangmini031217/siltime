@@ -28,9 +28,14 @@ import { exportRecordsCsv, exportWorkbook } from "./dataExport.js";
 import { exportReportImage, exportReportPdf } from "./reportExport.js";
 import { DotField } from "./dotField.js";
 import { rankUsers } from "./forestShape.js";
-import { buildImportLink } from "./shareTree.js";
+import { buildImportLink, buildShareCode } from "./shareTree.js";
 import { DotEditor, EDITOR_PALETTE } from "./dotEditor.js";
-import { getMockCommunityFeed, getMockCommunityStats, getMockTree } from "./mockData.js";
+import {
+  getMockCommunityFeed,
+  getMockCommunityStats,
+  getMockTree,
+  getMockTreeFor,
+} from "./mockData.js";
 import { RecordsRenderer } from "./recordsRenderer.js";
 import { SearchHistory, normalizeSeedId } from "./searchHistory.js";
 import {
@@ -130,6 +135,7 @@ const dom = {
   editorWarn: $("editor-warn"),
   editorImport: $("editor-import"),
   editorCopy: $("editor-copy"),
+  editorCode: $("editor-code"),
   themeColorMeta: $("theme-color-meta"),
 
   // 캔버스 (기록 클릭 시 스크롤 대상)
@@ -802,25 +808,85 @@ async function loadLandingForest() {
   renderForest();
 }
 
-/** 지금 보여줄 사용자와 통계 (샘플 미리보기 중이면 샘플) */
+/**
+ * 실제 사용자가 이 수보다 적으면, 숲이 휑해 보이지 않게 샘플 사용자를 뒤에 채워 보여 줍니다.
+ *
+ * 졸업작품 시연에서는 서버에 동기화한 사람이 한두 명뿐이라 숲에 점이 하나만 보였습니다.
+ * 실제 사용자가 이만큼 모이면 샘플은 자동으로 빠지고 실제 데이터만 남습니다.
+ */
+const FOREST_MIN_REAL_USERS = 10;
+
+/**
+ * 지금 보여줄 사용자와 통계.
+ *
+ * 사용자마다 `isSample` 을 달아 둡니다. 실제와 샘플이 섞이면 "화면 전체가 샘플인가" 로는
+ * 누른 점이 어느 쪽인지 알 수 없기 때문입니다.
+ *
+ * @returns {{users: object[], stats: object|null, isSample: boolean, serverDown: boolean,
+ *            realCount: number, sampleCount: number}}
+ */
 function forestView() {
   const info = state.forest;
   const serverDown = info.source === "mock";
+  const mark = (list, isSample) => (Array.isArray(list) ? list : []).map((user) => ({ ...user, isSample }));
 
   // 서버에 못 붙었으면 api.js 가 이미 샘플로 채워 준 값을 그대로 씁니다.
-  if (serverDown) return { users: info.users, stats: info.stats, isSample: true, serverDown };
-
-  // 사용자가 "샘플 숲 미리보기"를 켠 경우
-  if (info.sample) {
-    return { users: getMockCommunityFeed(), stats: getMockCommunityStats(), isSample: true, serverDown };
+  if (serverDown) {
+    const users = mark(info.users, true);
+    return { users, stats: info.stats, isSample: true, serverDown, realCount: 0, sampleCount: users.length };
   }
 
-  return { users: info.users, stats: info.stats, isSample: false, serverDown };
+  // 사용자가 "샘플 숲 미리보기"를 켠 경우: 샘플만 보여 줍니다.
+  if (info.sample) {
+    const users = mark(getMockCommunityFeed(), true);
+    return {
+      users,
+      stats: getMockCommunityStats(),
+      isSample: true,
+      serverDown,
+      realCount: 0,
+      sampleCount: users.length,
+    };
+  }
+
+  const real = mark(info.users, false);
+
+  // 실제 사용자가 충분하면 실제 데이터만 보여 줍니다.
+  if (real.length >= FOREST_MIN_REAL_USERS) {
+    return { users: real, stats: info.stats, isSample: false, serverDown, realCount: real.length, sampleCount: 0 };
+  }
+
+  // 실제 사용자가 적으면 샘플 사용자를 채웁니다. 같은 Seed ID 는 실제 쪽이 이깁니다.
+  const realIds = new Set(real.map((user) => normalizeSeedId(user.seedId)));
+  const filler = mark(getMockCommunityFeed(), true).filter(
+    (user) => !realIds.has(normalizeSeedId(user.seedId)),
+  );
+  const users = [...real, ...filler];
+
+  // 통계 한 줄도 실제와 샘플을 합쳐 보여 줍니다 (사용자 수·총 시간만 더하면 됩니다).
+  const sampleStats = getMockCommunityStats();
+  const realStats = info.stats ?? {};
+  const stats = {
+    ...sampleStats,
+    userCount: (Number(realStats.userCount) || real.length) + filler.length,
+    totalFocusSeconds:
+      (Number(realStats.totalFocusSeconds) || 0) +
+      filler.reduce((sum, user) => sum + (Number(user.totalFocusSeconds) || 0), 0),
+  };
+
+  return {
+    users,
+    stats,
+    isSample: real.length === 0,
+    serverDown,
+    realCount: real.length,
+    sampleCount: filler.length,
+  };
 }
 
 /** 숲 화면 전체(나무, 안내, 목록, 통계 한 줄)를 현재 상태로 다시 그립니다. */
 function renderForest() {
-  const { users, stats, isSample, serverDown } = forestView();
+  const { users, stats, isSample, serverDown, realCount, sampleCount } = forestView();
   const ranked = rankUsers(users);
   forest.setUsers(ranked);
 
@@ -831,7 +897,10 @@ function renderForest() {
   const seated = forest.seated;
   let status = "";
   if (serverDown) status = "서버에 연결하지 못해 샘플 데이터를 보여드려요";
-  else if (isSample) status = `샘플 데이터 · ${formatCount(ranked.length, "명")}`;
+  else if (realCount > 0 && sampleCount > 0) {
+    // 실제 사용자 + 샘플 사용자가 섞인 경우: 어디까지가 실제인지 숨기지 않습니다.
+    status = `실제 ${formatCount(realCount, "명")} + 샘플 ${formatCount(sampleCount, "명")}`;
+  } else if (isSample) status = `샘플 데이터 · ${formatCount(ranked.length, "명")}`;
   else if (ranked.length > 0) status = `${formatCount(ranked.length, "명")}이 숲에 있어요`;
   if (ranked.length > seated) status += ` (상위 ${formatCount(seated, "명")}만 표시)`;
   dom.forestStatus.textContent = status;
@@ -885,7 +954,8 @@ function renderForest() {
 
 /** 숲에서 점을 골랐을 때: 그 사람의 전적으로 넘어갑니다. */
 function openForestUser(user) {
-  if (forestView().isSample) {
+  // 실제와 샘플이 섞여 있으므로 화면 전체가 아니라 눌린 사람의 표시로 판단합니다.
+  if (user.isSample) {
     loadSampleUser(user);
     return;
   }
@@ -898,14 +968,18 @@ function openForestUser(user) {
  */
 function loadSampleUser(user) {
   enterReport();
-  const tree = normalizeTree({
-    seedId: user.seedId,
-    ownerNickname: user.nickname,
-    globalFocusSeconds: user.totalFocusSeconds,
-    categories: user.categories,
-    dots: user.dots,
-    grid: user.grid,
-  });
+  // 상세 전적(기록·카테고리 시간·잡초 포함)이 있으면 그것을, 없으면 피드의 썸네일 점을 씁니다.
+  const detail = getMockTreeFor(user.seedId);
+  const tree = normalizeTree(
+    detail ?? {
+      seedId: user.seedId,
+      ownerNickname: user.nickname,
+      globalFocusSeconds: user.totalFocusSeconds,
+      categories: user.categories,
+      dots: user.dots,
+      grid: user.grid,
+    },
+  );
   renderTree(tree);
 
   searchHistory.add(tree.seedId, tree.ownerNickname);
@@ -927,10 +1001,16 @@ function enterReport() {
 
 /* ─────────────────────────── Flows ─────────────────────────── */
 
-/** 샘플 데이터 로드 */
-function loadDemo(reason = "") {
+/**
+ * 샘플 데이터 로드
+ *
+ * @param {string} [reason] 화면에 덧붙일 사유 (조회 실패 등)
+ * @param {string} [seedId] 샘플 유저의 Seed ID. 샘플 유저이면 그 사람의 전적을,
+ *   아니면 대표 샘플 나무를 보여 줍니다.
+ */
+function loadDemo(reason = "", seedId = "") {
   enterReport();
-  const tree = normalizeTree(getMockTree());
+  const tree = normalizeTree(getMockTreeFor(seedId) ?? getMockTree());
   renderTree(tree);
 
   // 샘플도 "조회한 트리"로 취급해 라이브러리에 남깁니다.
@@ -983,6 +1063,15 @@ async function loadSeed(seedId) {
   } catch (error) {
     if (state.inFlight !== request) return;
 
+    // 샘플 숲·갤러리에서 고른 샘플 유저는 서버에 없습니다. 이때 대표 나무로 대신하면
+    // 누구를 눌러도 같은 화면이 나오므로, 그 사람의 샘플 전적을 보여 줍니다.
+    // 서버 오류가 아니므로 오류 배지도 달지 않습니다.
+    if (getMockTreeFor(trimmed)) {
+      loadDemo("", trimmed);
+      dom.hint.textContent = "샘플 유저의 전적이에요. 앱에서 동기화한 실제 기록이 아닙니다.";
+      return;
+    }
+
     const message =
       error?.name === "AbortError"
         ? "요청 시간 초과"
@@ -1002,7 +1091,8 @@ async function loadSeed(seedId) {
 /** 전적 갱신: 현재 보고 있는 대상을 다시 불러옵니다. */
 function refresh() {
   if (state.demoMode || !state.seedId) {
-    loadDemo();
+    // 보던 샘플 유저가 있으면 같은 사람을 다시 불러옵니다.
+    loadDemo("", state.seedId);
     return;
   }
   loadSeed(state.seedId);
@@ -1092,7 +1182,9 @@ function buildEditorPalette() {
   input.type = "color";
   input.value = "#00754A";
   input.className = "editor__color-input";
-  input.addEventListener("input", () => {
+  // `input` 은 선택기를 끄는 동안 계속 발생해 스와치가 수십 개 생기므로,
+  // 선택이 확정될 때 오는 `change` 로 받습니다.
+  input.addEventListener("change", () => {
     const hex = input.value.toUpperCase();
     // 이미 있는 색이면 그 스와치를 선택만, 없으면 새로 추가.
     const existing = dom.editorPalette.querySelector(
@@ -1121,6 +1213,7 @@ function onEditorChange(summary) {
   const canImport = summary.canImport;
   if (dom.editorImport) dom.editorImport.disabled = !canImport;
   if (dom.editorCopy) dom.editorCopy.disabled = !canImport;
+  refreshEditorCode();
 
   if (!dom.editorWarn) return;
   let message = "";
@@ -1163,29 +1256,50 @@ function closeEditor() {
   if (dom.editorOverlay) dom.editorOverlay.hidden = true;
 }
 
-/** 에디터의 현재 그림을 앱으로 보내거나 링크만 복사합니다. */
-async function sendEditorTree({ copyOnly }) {
-  if (!dotEditor) return;
-  const tree = { name: dom.editorName?.value ?? "", dots: dotEditor.toDots() };
+/** 에디터의 현재 그림을 이름과 함께 묶습니다. */
+function currentEditorTree() {
+  return {
+    name: dom.editorName?.value ?? "",
+    dots: dotEditor ? dotEditor.toDots() : [],
+  };
+}
 
-  if (copyOnly) {
-    const link = buildImportLink(tree);
-    const button = dom.editorCopy;
-    if (!link) return;
-    try {
-      await navigator.clipboard?.writeText(link.url);
-      if (button) button.textContent = "복사됨";
-    } catch {
-      if (button) button.textContent = "복사 실패";
-    } finally {
-      setTimeout(() => {
-        if (button) button.textContent = "링크 복사";
-      }, 1600);
-    }
-    return;
+/** 코드 상자를 현재 그림에 맞게 다시 채웁니다. 점이 없으면 비웁니다. */
+function refreshEditorCode() {
+  if (!dom.editorCode) return;
+  const result = buildShareCode(currentEditorTree());
+  dom.editorCode.value = result ? result.code : "";
+}
+
+/**
+ * 코드를 클립보드에 복사합니다.
+ * 클립보드 접근이 막힌 환경에서는 코드 상자를 선택해 두어 직접 복사할 수 있게 합니다.
+ */
+async function copyEditorCode() {
+  const result = buildShareCode(currentEditorTree());
+  const button = dom.editorCopy;
+  if (!result || !button) return;
+
+  let label = "복사됨";
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error("clipboard unavailable");
+    await navigator.clipboard.writeText(result.code);
+  } catch {
+    dom.editorCode?.focus();
+    dom.editorCode?.select();
+    label = "직접 복사해 주세요";
   }
 
-  importTreeToApp(tree, (message) => {
+  button.textContent = label;
+  setTimeout(() => {
+    button.textContent = "코드 복사";
+  }, 1800);
+}
+
+/** 앱이 같은 기기에 있을 때 링크로 바로 엽니다. */
+function openEditorInApp() {
+  if (!dotEditor) return;
+  importTreeToApp(currentEditorTree(), (message) => {
     if (dom.editorWarn) {
       dom.editorWarn.textContent = message;
       dom.editorWarn.hidden = false;
@@ -1421,8 +1535,10 @@ dom.drawButton?.addEventListener("click", () => openEditor());
 dom.landingDraw?.addEventListener("click", () => openEditor());
 dom.editorClose?.addEventListener("click", () => closeEditor());
 dom.editorClear?.addEventListener("click", () => dotEditor?.clear());
-dom.editorImport?.addEventListener("click", () => sendEditorTree({ copyOnly: false }));
-dom.editorCopy?.addEventListener("click", () => sendEditorTree({ copyOnly: true }));
+dom.editorImport?.addEventListener("click", () => openEditorInApp());
+dom.editorCopy?.addEventListener("click", () => copyEditorCode());
+// 이름을 고치면 코드에도 바로 반영합니다.
+dom.editorName?.addEventListener("input", () => refreshEditorCode());
 
 // 배경(오버레이) 클릭 또는 ESC 로 닫기
 dom.editorOverlay?.addEventListener("click", (event) => {

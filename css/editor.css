@@ -209,6 +209,25 @@
   box-shadow: var(--shadow-input-focus);
 }
 
+.editor__code {
+  width: 100%;
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--input-border, var(--card-border));
+  border-radius: var(--r-8);
+  background-color: var(--surface-interactive);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-10-5);
+  line-height: 1.4;
+  word-break: break-all;
+  resize: none;
+}
+
+.editor__code:focus {
+  outline: none;
+  border-color: var(--green-accent);
+}
+
 .editor__warn {
   margin: 0;
   padding: var(--sp-10) var(--sp-12);

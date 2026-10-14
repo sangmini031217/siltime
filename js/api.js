@@ -18,6 +18,7 @@ import {
   getMockCommunityFeed,
   getMockCommunityStats,
   getMockTree,
+  getMockTreeFor,
 } from "./mockData.js";
 
 /**
@@ -91,7 +92,8 @@ async function withFallback(load, fallback) {
 export function fetchTree(seedId) {
   return withFallback(
     () => fetchJSON(API_ENDPOINTS.tree(seedId)),
-    () => getMockTree(),
+    // 샘플 유저를 조회했다면 그 사람의 샘플 전적을, 아니면 대표 샘플 나무를 줍니다.
+    () => getMockTreeFor(seedId) ?? getMockTree(),
   );
 }
 

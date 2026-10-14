@@ -116,6 +116,34 @@ export function sanitizeName(name) {
   return Array.from(cleaned).slice(0, MAX_NAME_LENGTH).join("");
 }
 
+/* ── 복사 코드 ─────────────────────────────────────────────────────────────
+ * 링크(siltime://)는 메신저·메모 앱에서 눌러도 앱이 열리지 않는 경우가 있습니다.
+ * 그래서 같은 내용을 "복사해서 붙여넣는 코드"로도 줍니다. 앱 스튜디오의
+ * '코드로 가져오기'에 붙여넣으면 됩니다.
+ *
+ *   SIL1.<payload>[.<이름 base64url(UTF-8)>]
+ *
+ * payload 는 링크의 d= 값과 완전히 같습니다. 문자는 영문·숫자·-_· 뿐이라
+ * 어디에 붙여도 깨지지 않고, 앱은 공백·줄바꿈을 지우고 읽습니다.
+ */
+export const CODE_PREFIX = "SIL1";
+
+/**
+ * 나무를 복사 코드로 만듭니다.
+ * @param {{name?:string, dots:Array}} tree
+ * @returns {{code:string, dotCount:number}|null} 담을 점이 없으면 null
+ */
+export function buildShareCode(tree) {
+  const points = pickTreeDots(tree?.dots);
+  if (points.length === 0) return null;
+
+  const parts = [CODE_PREFIX, toBase64Url(encodePayload(points))];
+  const name = sanitizeName(tree?.name);
+  if (name) parts.push(toBase64Url(new TextEncoder().encode(name)));
+
+  return { code: parts.join("."), dotCount: points.length };
+}
+
 /**
  * 앱에서 열리는 "따라 그리기" 링크를 만듭니다.
  * @param {{name?:string, dots:Array}} tree
